@@ -1,41 +1,58 @@
 import socket
-import select
+import asyncio
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from config import POLL_READ
+from typing import List
 
-def control(port: int):
-    address: str = '0.0.0.0' # TODO: Magic Numbers
-    max_listen: int = 64 # TODO: 
-    # Setup the server
-    server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((address, port))
-    server_socket.listen(max_listen)
-    logging.info(f"Binding address {address}:{port}")
-
-    poller = select.poll()
-    poller.register(server_socket.fileno(), POLL_READ)
-
+async def udp_send_bytes(sock: socket.socket, addr: str, port: int, data:bytes):
+    server_address = (addr, port)
+    sock.sendto(data, server_address)
+    logging.info(f"Sending {data} to {addr}:{port}")
+    reply = ''
     try:
         while True:
-            epoll_list = poller.poll(1000)
+            reply += str(sock.recv(1024), encoding='ascii')
+    except socket.timeout:
+        logging.warn("Socket timeout")
+    return reply
 
-            for fd, events in epoll_list:
-                if events & (select.POLLIN | select.POLLPRI) and fd is server_socket.fileno():
-                    client_socket, (client_address, client_port) = server_socket.accept()
-                    logging.info(f"New client {client_address}:{client_port}")
-                    client_socket.setblocking(0)  # Non-blocking
+def gen_ip_address(subnet: List[int]): # TODO: Only support *.*.*.0/24
+    postfix = subnet[-1]
+    while postfix < 256:
+        yield ".".join(map(lambda x: str(x),subnet[:3])) + '.' + str(postfix)
+        postfix += 1
 
-                    client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)  # Set keep-alive
-                    if hasattr(socket, "TCP_KEEPIDLE") and hasattr(socket, "TCP_KEEPINTVL") and hasattr(socket, "TCP_KEEPCNT"):
-                        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 60)
-                        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 60)
-                        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
+async def control(port: int):
+    # Setup the server
+    ctrl_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # ctrl_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    ctrl_socket.settimeout(5) # TODO: Magic timeout
 
-                    # Evenly distribute client to subprocesses
+    # Get subnet, like [10,52,24,0]
+    try:
+        subnet: List[int] = list(map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.52.24.0\n> ").split(".")))
+    except ValueError:
+        logging.info("Wrong input, use default value(10.52.24.0)")
+        subnet = [10,52,24,0]
 
+    print(f"Welcome to Inertial Measurement Unit control system \n\nSending to {subnet}\nCommands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n")
+    try:
+        while True:
+            command = input("> ")
+            # results_list = await asyncio.gather(*[udp_send_bytes(ctrl_socket, addr, port, bytes(command, encoding='ascii')) for addr in gen_ip_address(subnet)])
+            # print(list(filter(lambda x: len(x) > 0, results_list)))
+            reply = await udp_send_bytes(ctrl_socket, ".".join(map(lambda x:str(x),subnet[:3])) + ".255", port, bytes(command, encoding='ascii'))
+            logging.info(reply)
+            print("Commands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n")
     except KeyboardInterrupt:
-        logging.info("Main process capture keyboard interrupt")
-    pass
+        print("Exitting")
+        return
+
+if __name__ == '__main__':
+    asyncio.run(control(18888))
+
+
+
+
+

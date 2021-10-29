@@ -15,6 +15,7 @@ def tcp_process_task(client_socket: socket.socket):
         if len(data) > 0:
             pass
             print(f"Idx: {idx}; Data len:{len(data)}")
+            print(data)
             idx += 1
             
     client_socket.close()
