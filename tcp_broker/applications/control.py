@@ -10,11 +10,11 @@ async def udp_send_bytes(sock: socket.socket, addr: str, port: int, data:bytes):
     sock.sendto(data, server_address)
     logging.info(f"Sending {data} to {addr}:{port}")
     reply = ''
-    try:
-        while True:
-            reply += str(sock.recv(1024), encoding='ascii')
-    except socket.timeout:
-        logging.warn("Socket timeout")
+    # try:
+    #     while True:
+    #         reply += str(sock.recv(1024), encoding='ascii')
+    # except socket.timeout:
+    #     logging.warn("Socket timeout")
     return reply
 
 def gen_ip_address(subnet: List[int]): # TODO: Only support *.*.*.0/24
@@ -40,10 +40,10 @@ async def control(port: int):
     try:
         while True:
             command = input("> ")
-            # results_list = await asyncio.gather(*[udp_send_bytes(ctrl_socket, addr, port, bytes(command, encoding='ascii')) for addr in gen_ip_address(subnet)])
+            results_list = await asyncio.gather(*[udp_send_bytes(ctrl_socket, addr, port, bytes(command, encoding='ascii')) for addr in gen_ip_address(subnet)])
             # print(list(filter(lambda x: len(x) > 0, results_list)))
-            reply = await udp_send_bytes(ctrl_socket, ".".join(map(lambda x:str(x),subnet[:3])) + ".255", port, bytes(command, encoding='ascii'))
-            logging.info(reply)
+            # reply = await udp_send_bytes(ctrl_socket, ".".join(map(lambda x:str(x),subnet[:3])) + ".255", port, bytes(command, encoding='ascii'))
+            # logging.info(reply)
             print("Commands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n")
     except KeyboardInterrupt:
         print("Exitting")

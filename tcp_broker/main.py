@@ -37,7 +37,6 @@ def main(PORT):
         
         print("Usage: \n    > start [measurement_name]    - start measurement\n    > control    - begin control program\n    > quit    - quit program")
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
