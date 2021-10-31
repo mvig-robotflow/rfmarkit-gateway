@@ -8,6 +8,11 @@ OSS_ACCESSKEY = os.getenv('OSS_ACCESSKEY')
 OSS_SECRETKEY = os.getenv('OSS_SECRETKEY')
 PROCESSOR_APIHOST = os.getenv('PROCESSOR_APIHOST')
 
+assert(OSS_ENDPOINT is not None), AssertionError("OSS_ENDPOINT not found in environment")
+assert(OSS_BUCKET is not None), AssertionError("OSS_BUCKET not found in environment")
+assert(OSS_ACCESSKEY is not None), AssertionError("OSS_ACCESSKEY not found in environment")
+assert(OSS_SECRETKEY is not None), AssertionError("OSS_SECRETKEY not found in environment")
+
 # Constants
 TCP_BUFF_SZ: int = 1024
 POLL_READ = select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR
