@@ -124,7 +124,25 @@ INFO:root:
 
 
 ## 校准（只需执行一次）
-
+1. `python tcp_display.py` -> `start` 启动一个服务器用于保持传感器在线，**注意端口号**
+2. 激活传感器
+3. `python main.py` -> `control` 启动**控制器**
+4. **控制器**: `cali_acc`
 
 > 紫叶的传感器IP地址都在`10.52.24.0/24`网段
 
+
+## 获取数据
+
+用以下配置登陆 `http://10.52.21.125:10001`
+
+```json
+{
+    "username":"njxydwx",
+    "password":"njxydwx123"
+}
+```
+
+访问`Buckets` -> `imu-auto-dst`
+
+处理过的数据（npz格式）被打包成zip文件供下载

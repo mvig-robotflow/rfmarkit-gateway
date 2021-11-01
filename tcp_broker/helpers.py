@@ -57,16 +57,6 @@ def invoke_data_process_task(service_apihost: str,
                              
     return response.json()
 
-def filter_data(data: bytes) -> str:
-    """Filter data converts bytes to string
-
-    Args:
-        data (bytes): raw data gram received
-    Returns:
-        str: str(data)
-    """
-    return str(data, encoding='utf-8')
-
 
 def insert_data(f: FileIO, data: str):
     """Insert data to FileIO database (file)

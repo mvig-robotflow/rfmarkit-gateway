@@ -1,5 +1,6 @@
 import socket
 import multiprocessing as mp
+import argparse
 
 TCP_BUFF_SZ: int = 1024
 DEBUG: bool = True
@@ -35,4 +36,8 @@ def tcp_listen_task(address: str, port: int, max_listen: int=64) -> None:
 
 
 if __name__ == '__main__':
-    tcp_listen_task('0.0.0.0', 18888)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=18889)
+    args = parser.parse_args()
+
+    tcp_listen_task('0.0.0.0', args.port)

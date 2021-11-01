@@ -9,7 +9,7 @@ from io import FileIO
 from typing import Dict
 
 from config import  TCP_BUFF_SZ, POLL_READ, POLL_TIMEOUT_MS, DATA_DIR
-from helpers import unregister_fd, filter_data, insert_data
+from helpers import unregister_fd, insert_data
 
 def tcp_process_task(client_socket_queue: mp.Queue, system_lock: mp.Lock,measurement_name: str, proc_id: int):
     # Check the existence of output directory
@@ -38,7 +38,7 @@ def tcp_process_task(client_socket_queue: mp.Queue, system_lock: mp.Lock,measure
                 client_sockets[new_client_fd] = new_client_socket
                 if new_client_fd not in file_handles.keys():
                     file_handles[new_client_fd] = open(
-                        os.path.join(measurement_basedir, f'process_{str(proc_id)}_{new_client_fd}.dat'), 'a')
+                        os.path.join(measurement_basedir, f'process_{str(proc_id)}_{new_client_fd}.dat'), 'ab')
                 else:
                     logging.warn(f"The fd: {fd} already has related file handle")
 
@@ -62,9 +62,7 @@ def tcp_process_task(client_socket_queue: mp.Queue, system_lock: mp.Lock,measure
                             unregister_fd(fd, poller, client_sockets, file_handles)
                             continue
 
-                        logging.debug(f"DATA: {data.decode(encoding='ascii')}")
-                        parsed_data: str = filter_data(data)
-                        insert_data(file_handles[fd], parsed_data)
+                        insert_data(file_handles[fd], data)
 
                     else:
                         logging.warn(f"Unhandled event {events}")

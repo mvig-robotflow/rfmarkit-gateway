@@ -6,8 +6,10 @@ export OSS_DST_BUCKET="imu-auto-dst"
 export OSS_ACCESSKEY="RootAccessKey"
 export OSS_SECRETKEY="JEYzvyMqr8kM2nMy"
 
+docker stop procmemautod
+docker rm procmemautod
+
 docker run -itd \
-           --rm \
            --name procmemautod \
            -e OSS_ENDPOINT=$OSS_ENDPOINT \
            -e OSS_SRC_BUCKET=$OSS_SRC_BUCKET \

@@ -5,16 +5,18 @@ logging.basicConfig(level=logging.INFO)
 
 from typing import List
 
-async def udp_send_bytes(sock: socket.socket, addr: str, port: int, data:bytes):
-    server_address = (addr, port)
-    sock.sendto(data, server_address)
-    logging.info(f"Sending {data} to {addr}:{port}")
-    reply = ''
-    # try:
-    #     while True:
-    #         reply += str(sock.recv(1024), encoding='ascii')
-    # except socket.timeout:
-    #     logging.warn("Socket timeout")
+async def udp_send_bytes(sock: socket.socket, addr: str, port: int, data:bytes, n_repeat: int = 1):
+    logging.info(f"Sending {data} to {addr}:{port} for {n_repeat} times")
+
+    for _ in range(n_repeat):
+        server_address = (addr, port)
+        sock.sendto(data, server_address)
+        reply = ''
+        # try:
+        #     while True:
+        #         reply += str(sock.recv(1024), encoding='ascii')
+        # except socket.timeout:
+        #     logging.warn("Socket timeout")
     return reply
 
 def gen_ip_address(subnet: List[int]): # TODO: Only support *.*.*.0/24
@@ -36,15 +38,25 @@ async def control(port: int):
         logging.info("Wrong input, use default value(10.52.24.0)")
         subnet = [10,52,24,0]
 
-    print(f"Welcome to Inertial Measurement Unit control system \n\nSending to {subnet}\nCommands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n")
+    print(f"Welcome to Inertial Measurement Unit control system \n\nSending to {subnet}\nCommands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n\n    > quit - quit this tool\n")
+    n_repeat: int = 1
     try:
         while True:
             command = input("> ")
-            results_list = await asyncio.gather(*[udp_send_bytes(ctrl_socket, addr, port, bytes(command, encoding='ascii')) for addr in gen_ip_address(subnet)])
+            if command in ['quit', 'q']:
+                break
+
+            # Usually 3 repeats will guarantee
+            if command in ['start', 'stop', 'shutdown', 'restart']:
+                n_repeat = 3
+            else:
+                n_repeat = 1
+
+            results_list = await asyncio.gather(*[udp_send_bytes(ctrl_socket, addr, port, bytes(command, encoding='ascii'), n_repeat) for addr in gen_ip_address(subnet)])
             # print(list(filter(lambda x: len(x) > 0, results_list)))
             # reply = await udp_send_bytes(ctrl_socket, ".".join(map(lambda x:str(x),subnet[:3])) + ".255", port, bytes(command, encoding='ascii'))
             # logging.info(reply)
-            print("Commands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n")
+            print("\nCommands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n\n    > quit - quit this tool\n")
     except KeyboardInterrupt:
         print("Exitting")
         return

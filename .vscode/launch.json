@@ -10,6 +10,15 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: main.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tcp_broker/main.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/tcp_broker",
+            "args": ["--port", "18889"]
         }
     ]
 }

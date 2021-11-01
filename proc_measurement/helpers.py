@@ -11,10 +11,11 @@ import logging
 from minio import Minio
 import zipfile
 import numpy as np
+from imu_parser import IMUParser
 
 logging.basicConfig(level=logging.INFO)
 MEASUREMENT_KEYS: List[str] = [
-    'id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'pitch', 'roll', 'yaw'
+    'id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'mag_x', 'mag_y', 'mag_z', 'pitch', 'roll', 'yaw'
 ]
 
 
@@ -139,15 +140,13 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
     filenames_list: List[str] = glob.glob(os.path.join(measurement_basedir, '*.dat'))
     all_measurement: Dict[str, list] = {}
     all_measurement_np: Dict[str, Dict[str, np.ndarray]] = {}
+    gy_parser = IMUParser()
 
     # Scatter measurement point
     for filename in filenames_list:
-        with open(filename) as f:
-            while True:
-                line = f.readline()
-                if not line:
-                    break
-                point = json.loads(line)
+        with open(filename, 'rb') as f:
+            points = gy_parser(f)
+            for point in points:
                 point_id = point['id']
                 if point_id not in all_measurement.keys():
                     all_measurement[point_id] = []
@@ -186,4 +185,5 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
 
 
 if __name__ == '__main__':
-    res = convert_measurement('./imu_mem_2021-10-21_211859')
+    res = convert_measurement('/home/liyutong/Tasks/imu-node-deploy/tcp_broker/imu_data/imu_mem_2021-11-02_010812')
+    print(res)
