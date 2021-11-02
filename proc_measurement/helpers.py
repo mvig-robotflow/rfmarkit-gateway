@@ -140,12 +140,12 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
     filenames_list: List[str] = glob.glob(os.path.join(measurement_basedir, '*.dat'))
     all_measurement: Dict[str, list] = {}
     all_measurement_np: Dict[str, Dict[str, np.ndarray]] = {}
-    gy_parser = IMUParser()
+    imu_parser = IMUParser()
 
     # Scatter measurement point
     for filename in filenames_list:
         with open(filename, 'rb') as f:
-            points = gy_parser(f)
+            points = imu_parser(f)
             for point in points:
                 point_id = point['id']
                 if point_id not in all_measurement.keys():

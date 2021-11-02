@@ -75,7 +75,7 @@ async def convert(object_name: str) -> Tuple[bool, str, Dict[str, Any]]:
         os.remove(archive_filename)
         shutil.rmtree(measurement_basedir)
     except FileNotFoundError as err:
-        logging.warn("File Not Found, the process might not be completed")
+        logging.warning("File Not Found, the process might not be completed")
 
     return True, object_name, ret
 

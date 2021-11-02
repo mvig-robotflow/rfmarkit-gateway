@@ -47,7 +47,7 @@ async def control(port: int):
                 break
 
             # Usually 3 repeats will guarantee
-            if command in ['start', 'stop', 'shutdown', 'restart']:
+            if command in ['start', 'stop', 'shutdown', 'restart', 'update']:
                 n_repeat = 3
             else:
                 n_repeat = 1
