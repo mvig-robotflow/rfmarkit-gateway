@@ -1,6 +1,5 @@
 import argparse
 import logging
-import asyncio
 
 from datetime import datetime
 from config import DEBUG
@@ -25,7 +24,7 @@ def main(PORT):
             measure(PORT, measurement_name)
 
         elif cmd[0] in ['control', 'c']:
-            asyncio.run(control(PORT))
+            control(PORT)
             print(f"Starting control app")
         
         elif cmd[0] in ['quit', 'q', 'exit']:
