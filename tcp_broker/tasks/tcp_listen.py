@@ -8,19 +8,23 @@ from .tcp_process import tcp_process_task
 
 from config import N_PROC, POLL_READ
 
+
 def tcp_listen_task(address: str, port: int, measurement_name: str, max_listen: int = 64) -> None:
     # Create client listeners
     client_queues: List[mp.Queue] = [mp.Queue(maxsize=4) for _ in range(N_PROC)]
     system_lock = mp.Lock()
     client_procs: List[mp.Process] = [
-        mp.Process(None, tcp_process_task, f"tcp_process_{i}", (
-            client_queues[i],
-            system_lock,
-            measurement_name,
-            i,
-        ), daemon=False) for i in range(N_PROC)
+        mp.Process(None,
+                   tcp_process_task,
+                   f"tcp_process_{i}", (
+                       client_queues[i],
+                       system_lock,
+                       measurement_name,
+                       i,
+                   ),
+                   daemon=False) for i in range(N_PROC)
     ]
-    for proc in client_procs: # Start all listeners
+    for proc in client_procs:  # Start all listeners
         proc.start()
 
     n_client: int = 0
@@ -52,7 +56,13 @@ def tcp_listen_task(address: str, port: int, measurement_name: str, max_listen: 
                         client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
 
                     # Evenly distribute client to subprocesses
-                    client_queues[n_client % N_PROC].put(client_socket)
+                    client_queues[n_client % N_PROC].put(
+                        {
+                            "addr": client_address, 
+                            "port": client_port, 
+                            "socket": client_socket
+                        }
+                    )
                     n_client += 1
 
             if not any([proc.is_alive() for proc in client_procs]):
@@ -64,5 +74,5 @@ def tcp_listen_task(address: str, port: int, measurement_name: str, max_listen: 
     for proc in client_procs:
         logging.debug(f"Joining {proc}")
         proc.join()
-    
+
     server_socket.close()

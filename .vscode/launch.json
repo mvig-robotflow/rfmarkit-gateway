@@ -18,7 +18,29 @@
             "program": "${workspaceFolder}/tcp_broker/main.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/tcp_broker",
-            "args": ["--port", "18889"]
+            "args": ["--port", "18888"],
+            "env":{
+                "OSS_ENDPOINT":"10.52.21.125:10000",
+                "OSS_BUCKET":"imu-auto-src",
+                "OSS_ACCESSKEY":"RootAccessKey",
+                "OSS_SECRETKEY":"JEYzvyMqr8kM2nMy"
+            }
+        },
+        {
+            "name": "Python: procmemauto.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/proc_measurement/proc_mem_auto.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/tcp_broker",
+            "args": ["--port", "18889"],
+            "env":{
+                "OSS_ENDPOINT":"10.52.21.125:10000",
+                "OSS_SRC_BUCKET":"imu-auto-src",
+                "OSS_DST_BUCKET":"imu-auto-dst",
+                "OSS_ACCESSKEY":"RootAccessKey",
+                "OSS_SECRETKEY":"JEYzvyMqr8kM2nMy"
+            }
         }
     ]
 }
