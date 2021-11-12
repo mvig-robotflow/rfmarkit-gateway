@@ -6,8 +6,10 @@ import logging
 import glob
 import shutil
 import asyncio
+import sys
 
 from minio import Minio
+from minio.commonconfig import CopySource
 from helpers import download_file_oss, convert_measurement, upload_file_oss
 
 OSS_ENDPOINT = os.environ['OSS_ENDPOINT']
@@ -20,8 +22,12 @@ logging.basicConfig(level=logging.INFO)
 
 
 async def convert(object_name: str) -> Tuple[bool, str, Dict[str, Any]]:
+    tmp_dir: str = './tmp'
     measurement_name = object_name.split('.')[0]
-    measurement_basedir = os.path.join('.', measurement_name)
+    if measurement_name == '':
+        return False, object_name, dict()
+    
+    measurement_basedir = os.path.join(tmp_dir, measurement_name)
     measurement_filename = object_name
     
     # Download measurement and extract
@@ -34,7 +40,7 @@ async def convert(object_name: str) -> Tuple[bool, str, Dict[str, Any]]:
     if ret['status']:
         # Unzip and get measurement name
         with zipfile.ZipFile(measurement_filename) as f:
-            f.extractall()
+            f.extractall(tmp_dir)
         os.remove(measurement_filename)
         # TODO: There is an agreement that extraction will expand to ./{measurement_name}
         logging.info(f"Got measurement: {measurement_name}")
@@ -54,7 +60,7 @@ async def convert(object_name: str) -> Tuple[bool, str, Dict[str, Any]]:
 
     # Create zip archive no matter what
     logging.info(f"Creating zip archive")
-    archive_filename: str = os.path.join('/tmp', f'{measurement_name}_{postfix}.zip')
+    archive_filename: str = os.path.join(tmp_dir, f'{measurement_name}_{postfix}.zip')
     filenames: List[str] = glob.glob(os.path.join(measurement_basedir, '*'))
     with zipfile.ZipFile(archive_filename, 'w', zipfile.ZIP_DEFLATED) as f:
         for filename in filenames:
@@ -97,11 +103,13 @@ async def main_loop():
         # Convert measurements
         for retcode, object_name, _ in results_list:
             if not retcode:
+                logging.error(f"Failed to process {object_name}")
+                sys.stdout.flush()
                 failed_object_names.append(object_name)
-                failed_object_name = f"{object_name.split('.')[0]}_failed.{object_name.split('.')[1]}"
+                failed_object_name = f"{object_name.split('.')[0]}_failed.{object_name.split('.')[-1]}"
                 minioClient.copy_object(bucket_name=OSS_DST_BUCKET, 
                                         object_name=failed_object_name, 
-                                        source=f"/{OSS_SRC_BUCKET}/{object_name}")
+                                        source=CopySource(OSS_SRC_BUCKET, object_name))
             
             # Remove old object anyway
             minioClient.remove_object(OSS_SRC_BUCKET, object_name)
