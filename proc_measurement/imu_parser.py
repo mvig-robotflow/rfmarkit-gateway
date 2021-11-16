@@ -31,12 +31,12 @@ META_FORMAT = {
     "data": [0, 32]
 }
 DATA_DIVIDER = {
-    "accel_x": 16 / 65536,
-    "accel_y": 16 / 65536,
-    "accel_z": 16 / 65536,
-    "gyro_x": 4000 / 65536,
-    "gyro_y": 4000 / 65536,
-    "gyro_z": 4000 / 65536,
+    "accel_x": 4 / 65536,
+    "accel_y": 4 / 65536,
+    "accel_z": 4 / 65536,
+    "gyro_x": 500 / 65536,
+    "gyro_y": 500 / 65536,
+    "gyro_z": 500 / 65536,
     "roll": 1 / 100,
     "pitch": 1 / 100,
     "yaw": 1 / 100,

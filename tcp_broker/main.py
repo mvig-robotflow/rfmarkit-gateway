@@ -7,10 +7,10 @@ from config import DEBUG
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 
 from tasks import tcp_listen_task
-from applications import measure, control
+from applications import measure, control, test
 
 def main(PORT):
-    print("Welcome to Inertial Measurement Unit Data collecting system \n\n Usage: \n    > start [measurement_name]    - start measurement\n    > control    - begin control program\n    > quit    - quit program")
+    print("Welcome to Inertial Measurement Unit Data collecting system \n\n Usage: \n    > start [measurement_name]    - start measurement\n    > control    - begin control program\n    > test    - begin test program\n    > quit    - quit program")
     while True:
         cmd = input("> ").split(' ')
         
@@ -26,6 +26,10 @@ def main(PORT):
         elif cmd[0] in ['control', 'c']:
             control(PORT)
             print(f"Starting control app")
+        
+        elif cmd[0] in ['test','t']:
+            test('0.0.0.0', PORT)
+
         
         elif cmd[0] in ['quit', 'q', 'exit']:
             print(f"Exitting...")

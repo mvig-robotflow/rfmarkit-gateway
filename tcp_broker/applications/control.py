@@ -1,10 +1,25 @@
 import socket
 from concurrent.futures import ThreadPoolExecutor
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 
 from typing import List
+
+
+def hold(subnet, port):
+    try:
+        while True:
+            logging.warn("Holding")
+            with ThreadPoolExecutor(64) as executor:
+                for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, 'ping')):
+                    if len(ret['msg']) > 0:
+                        print(f"{(ret['addr'])} return: {ret['msg']}")
+            time.sleep(30)
+    except KeyboardInterrupt as err:
+        return
+
 
 
 def tcp_send_bytes(arguments):
@@ -64,6 +79,9 @@ def control(port: int):
             command = input("> ")
             if command in ['quit', 'q']:
                 break
+            elif command in ['hold', 'h']:
+                hold(subnet, port)
+                continue
 
             with ThreadPoolExecutor(64) as executor:
                 for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command)):
