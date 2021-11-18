@@ -21,7 +21,6 @@ def hold(subnet, port):
         return
 
 
-
 def tcp_send_bytes(arguments):
     addr: str = arguments['addr']
     port: int = arguments['port']
@@ -62,6 +61,37 @@ def gen_arguments(subnet: List[int], port: int, command: str):  # TODO: Only sup
         postfix += 1
 
 
+def print_help():
+    print("\
+Commands: \n \
+    > restart\n\
+    > ping\n\
+    > shutdown\n\
+    > update\n\
+    > cali_reset\n\
+    > cali_acc\n\
+    > cali_mag\n\
+    > start\n\
+    > stop\n\
+    > gy_enable\n\
+    > gy_disable\n\
+    > gy_status\n\
+    > gy_imm\n\
+    > gy_setup\n\
+    > gy_scale\n\
+    > id\n\
+    > ver\n\
+    > blink_set\n\
+    > blink_get\n\
+    > blink_start\n\
+    > blink_stop\n\
+    > blink_off\n\
+    > v_verison_shutdown\n\
+    > sleep\n\
+    > hold*\n\
+    > quit - quit this tool\n\n")
+
+
 def control(port: int):
     # Get subnet, like [10,52,24,0]
     try:
@@ -70,14 +100,16 @@ def control(port: int):
         logging.info("Wrong input, use default value(10.52.24.0)")
         subnet = [10, 52, 24, 0]
 
-    print(
-        f"Welcome to Inertial Measurement Unit control system \n\nSending to {subnet}\nCommands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n\n    > quit - quit this tool\n"
-    )
+    print(f"Welcome to Inertial Measurement Unit control system \n\n \
+Sending to {subnet}\n")
+    print_help()
     n_repeat: int = 1
     try:
         while True:
             command = input("> ")
-            if command in ['quit', 'q']:
+            if command == '':
+                continue
+            elif command in ['quit', 'q']:
                 break
             elif command in ['hold', 'h']:
                 hold(subnet, port)
@@ -88,9 +120,7 @@ def control(port: int):
                     if len(ret['msg']) > 0:
                         print(f"{(ret['addr'])} return: {ret['msg']}")
 
-            print(
-                "\nCommands: \n    > restart\n    > ping\n    > sleep\n    > shutdown\n    > update\n    > cali_reset\n    > cali_acc\n    > cali_mag\n    > start\n    > stop\n\n    > quit - quit this tool\n"
-            )
+            print_help()
     except KeyboardInterrupt:
         print("Exitting")
         return

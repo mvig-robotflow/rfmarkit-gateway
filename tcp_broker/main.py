@@ -12,7 +12,11 @@ from applications import measure, control, test
 def main(PORT):
     print("Welcome to Inertial Measurement Unit Data collecting system \n\n Usage: \n    > start [measurement_name]    - start measurement\n    > control    - begin control program\n    > test    - begin test program\n    > quit    - quit program")
     while True:
-        cmd = input("> ").split(' ')
+        try:
+            cmd = input("> ").split(' ')
+        except KeyboardInterrupt:
+            logging.info("Exitting")
+            return
         
         if cmd[0] in ['start', 's', '']:
 

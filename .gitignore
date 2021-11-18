@@ -2,3 +2,5 @@
 *.dat
 *.pyc
 */imu_data
+tools/data
+ota/*
