@@ -2,6 +2,7 @@ import socket
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import time
+import multiprocessing as mp
 
 logging.basicConfig(level=logging.INFO)
 
@@ -53,17 +54,22 @@ def tcp_send_bytes(arguments):
     return {"addr": addr, "msg": reply}
 
 
-def gen_arguments(subnet: List[int], port: int, command: str):  # TODO: Only support *.*.*.0/24
-    postfix = subnet[-1]
+def gen_arguments(subnet: List[int], port: int, command: str, client_addrs: List[str] = None):  # TODO: Only support *.*.*.0/24
     data = bytes(command, encoding='ascii')
-    while postfix < 256:
-        yield {'addr': ".".join(map(lambda x: str(x), subnet[:3])) + '.' + str(postfix), 'port': port, 'data': data}
-        postfix += 1
+
+    if client_addrs is None:
+        postfix = subnet[-1]
+        while postfix < 256:
+            yield {'addr': ".".join(map(lambda x: str(x), subnet[:3])) + '.' + str(postfix), 'port': port, 'data': data}
+            postfix += 1
+    else:
+        for addr in client_addrs:
+            yield {'addr': addr, 'port': port, 'data': data}
 
 
 def print_help():
     print("\
-Commands: \n \
+Commands: \n\
     > restart\n\
     > ping\n\
     > shutdown\n\
@@ -92,7 +98,7 @@ Commands: \n \
     > quit - quit this tool\n\n")
 
 
-def control(port: int):
+def control(port: int, client_queue: mp.Queue = None):
     # Get subnet, like [10,52,24,0]
     try:
         subnet: List[int] = list(map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.52.24.0\n> ").split(".")))
@@ -103,9 +109,19 @@ def control(port: int):
     print(f"Welcome to Inertial Measurement Unit control system \n\n \
 Sending to {subnet}\n")
     print_help()
-    n_repeat: int = 1
+
+    if client_queue is not None:
+        client_addrs: set[str] = set([])
+    else:
+        client_addrs = None
+
     try:
         while True:
+            if client_addrs is not None:
+                print(f"Online clients: {client_addrs}")
+            if client_queue is not None:
+                while not client_queue.empty():
+                    client_addrs.add(str(client_queue.get()))
             command = input("> ")
             if command == '':
                 continue
@@ -116,7 +132,9 @@ Sending to {subnet}\n")
                 continue
 
             with ThreadPoolExecutor(64) as executor:
-                for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command)):
+                if client_addrs is not None:
+                    print(f"Sending to: {client_addrs}")
+                for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command, list(client_addrs))):
                     if len(ret['msg']) > 0:
                         print(f"{(ret['addr'])} return: {ret['msg']}")
 

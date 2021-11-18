@@ -8,8 +8,9 @@ from .tcp_process import tcp_process_task
 
 from config import N_PROC, POLL_READ
 
+MAX_LISTEN = 64
 
-def tcp_listen_task(address: str, port: int, measurement_name: str, max_listen: int = 64) -> None:
+def tcp_listen_task(address: str, port: int, measurement_name: str,client_addr_queue: mp.Queue=None) -> None:
     # Create client listeners
     client_queues: List[mp.Queue] = [mp.Queue(maxsize=4) for _ in range(N_PROC)]
     system_lock = mp.Lock()
@@ -33,7 +34,7 @@ def tcp_listen_task(address: str, port: int, measurement_name: str, max_listen: 
     server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((address, port))
-    server_socket.listen(max_listen)
+    server_socket.listen(MAX_LISTEN)
     logging.info(f"Binding address {address}:{port}")
 
     poller = select.poll()
@@ -47,6 +48,10 @@ def tcp_listen_task(address: str, port: int, measurement_name: str, max_listen: 
                 if events & (select.POLLIN | select.POLLPRI) and fd is server_socket.fileno():
                     client_socket, (client_address, client_port) = server_socket.accept()
                     logging.info(f"New client {client_address}:{client_port}")
+
+                    if client_addr_queue is not None:
+                        client_addr_queue.put(client_address)
+                    
                     client_socket.setblocking(0)  # Non-blocking
 
                     client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)  # Set keep-alive

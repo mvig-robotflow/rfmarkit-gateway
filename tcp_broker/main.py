@@ -9,8 +9,17 @@ logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level
 from tasks import tcp_listen_task
 from applications import measure, control, test
 
+def print_help():
+    print("\
+ Usage: \n\
+    > start [measurement_name] - start measurement\n\
+    > control - begin control program\n\
+    > test    - begin test program\n\
+    > quit    - quit program\n")
+
 def main(PORT):
-    print("Welcome to Inertial Measurement Unit Data collecting system \n\n Usage: \n    > start [measurement_name]    - start measurement\n    > control    - begin control program\n    > test    - begin test program\n    > quit    - quit program")
+    print("Welcome to Inertial Measurement Unit Data collecting system \n\n")
+    print_help()
     while True:
         try:
             cmd = input("> ").split(' ')
@@ -42,7 +51,7 @@ def main(PORT):
         else:
             print(f"Invalid command: {' '.join(cmd)}")
         
-        print("Usage: \n    > start [measurement_name]    - start measurement\n    > control    - begin control program\n    > quit    - quit program")
+        print_help()
 
 if __name__ == '__main__':
 
