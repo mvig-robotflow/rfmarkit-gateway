@@ -15,7 +15,7 @@ from imu_parser import IMUParser
 
 logging.basicConfig(level=logging.INFO)
 MEASUREMENT_KEYS: List[str] = [
-    'id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'mag_x', 'mag_y', 'mag_z', 'pitch', 'roll', 'yaw'
+    'id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'mag_x', 'mag_y', 'mag_z', 'pitch', 'roll', 'yaw', "start_timestamp","uart_buffer_len"
 ]
 
 

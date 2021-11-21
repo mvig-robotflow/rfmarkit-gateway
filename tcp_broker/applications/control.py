@@ -105,6 +105,10 @@ def control(port: int, client_queue: mp.Queue = None):
     except ValueError:
         logging.info("Wrong input, use default value(10.52.24.0)")
         subnet = [10, 52, 24, 0]
+    
+    except KeyboardInterrupt:
+        print("Exitting")
+        return
 
     print(f"Welcome to Inertial Measurement Unit control system \n\n \
 Sending to {subnet}\n")
@@ -134,7 +138,7 @@ Sending to {subnet}\n")
             with ThreadPoolExecutor(64) as executor:
                 if client_addrs is not None:
                     print(f"Sending to: {client_addrs}")
-                for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command, list(client_addrs))):
+                for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command, client_addrs)):
                     if len(ret['msg']) > 0:
                         print(f"{(ret['addr'])} return: {ret['msg']}")
 
