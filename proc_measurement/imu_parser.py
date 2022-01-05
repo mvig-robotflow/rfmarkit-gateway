@@ -118,7 +118,7 @@ class IMUParser:
     BLOCK_SZ: int = 0x1000
 
     def __init__(self) -> None:
-        self.buf: np.ndarray = np.zeros(shape=(70), dtype=np.uint8)
+        self.buf: np.ndarray = np.zeros(shape=(100), dtype=np.uint8)
         self.cursor: int = 0
         self.start_reg: int = 0
         self.length: int = 0
