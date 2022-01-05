@@ -185,5 +185,5 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
 
 
 if __name__ == '__main__':
-    res = convert_measurement('/home/liyutong/Tasks/imu-node-deploy/tcp_broker/imu_data/imu_mem_2021-11-02_010812')
+    res = convert_measurement('/home/liyutong/Tasks/imu-node-deploy/imu_mem_2021-12-02_120528_unprocessed')
     print(res)
