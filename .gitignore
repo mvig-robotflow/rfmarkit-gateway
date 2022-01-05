@@ -4,3 +4,4 @@
 */imu_data
 tools/data
 ota/*
+*.DS_Store
