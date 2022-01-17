@@ -1,10 +1,11 @@
-import socket
-import multiprocessing as mp
 import argparse
+import multiprocessing as mp
+import socket
 
 TCP_BUFF_SZ: int = 1024
 DEBUG: bool = True
 idx: int = 0
+
 
 def tcp_process_task(client_socket: socket.socket):
     global idx
@@ -18,12 +19,13 @@ def tcp_process_task(client_socket: socket.socket):
             print(f"Idx: {idx}; Data len:{len(data)}")
             print(data)
             idx += 1
-            
+
     client_socket.close()
     return
 
-def test(address: str, port: int, max_listen: int=64) -> None:
-    server_socket:socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+def test(address: str, port: int, max_listen: int = 64) -> None:
+    server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((address, port))
     server_socket.listen(max_listen)
@@ -33,11 +35,12 @@ def test(address: str, port: int, max_listen: int=64) -> None:
         while True:
             client_socket, (client_address, client_port) = server_socket.accept()
             print("[ Info ] New client {}:{}".format(client_address, client_port))
-            client_proc = mp.Process(None, tcp_process_task, "tcp_process_{}:{}".format(client_address, client_port), (client_socket, ))
+            client_proc = mp.Process(None, tcp_process_task, "tcp_process_{}:{}".format(client_address, client_port),
+                                     (client_socket,))
             client_proc.start()
             client_procs.append(client_proc)
     except KeyboardInterrupt:
-        print("Exitting")
+        print("Exiting")
         for proc in client_procs:
             proc.join()
         return

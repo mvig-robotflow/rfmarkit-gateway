@@ -1,8 +1,8 @@
-import socket
-from concurrent.futures import ThreadPoolExecutor
 import logging
-import time
 import multiprocessing as mp
+import socket
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,7 +54,8 @@ def tcp_send_bytes(arguments):
     return {"addr": addr, "msg": reply}
 
 
-def gen_arguments(subnet: List[int], port: int, command: str, client_addrs: List[str] = None):  # TODO: Only support *.*.*.0/24
+def gen_arguments(subnet: List[int], port: int, command: str,
+                  client_addrs: List[str] = None):  # WARNING: Only support *.*.*.0/24
     data = bytes(command, encoding='ascii')
 
     if client_addrs is None:
@@ -79,12 +80,12 @@ Commands: \n\
     > cali_mag\n\
     > start\n\
     > stop\n\
-    > gy_enable\n\
-    > gy_disable\n\
-    > gy_status\n\
-    > gy_imm\n\
-    > gy_setup\n\
-    > gy_scale\n\
+    > imu_enable\n\
+    > imu_disable\n\
+    > imu_status\n\
+    > imu_imm\n\
+    > imu_setup\n\
+    > imu_scale\n\
     > id\n\
     > ver\n\
     > blink_set\n\
@@ -105,9 +106,9 @@ def control(port: int, client_queue: mp.Queue = None):
     except ValueError:
         logging.info("Wrong input, use default value(10.52.24.0)")
         subnet = [10, 52, 24, 0]
-    
+
     except KeyboardInterrupt:
-        print("Exitting")
+        print("Control Exiting")
         return
 
     print(f"Welcome to Inertial Measurement Unit control system \n\n \
@@ -144,7 +145,7 @@ Sending to {subnet}\n")
 
             print_help()
     except KeyboardInterrupt:
-        print("Exitting")
+        print("Control Exiting")
         return
 
 

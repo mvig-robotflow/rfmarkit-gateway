@@ -1,13 +1,13 @@
 import argparse
 import logging
-
 from datetime import datetime
+
 from config import DEBUG
 
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 
-from tasks import tcp_listen_task
 from applications import measure, control, test
+
 
 def print_help():
     print("\
@@ -17,16 +17,17 @@ def print_help():
     > test    - begin test program\n\
     > quit    - quit program\n")
 
-def main(PORT):
+
+def main(PORT: int):
     print("Welcome to Inertial Measurement Unit Data collecting system \n\n")
     print_help()
     while True:
         try:
             cmd = input("> ").split(' ')
         except KeyboardInterrupt:
-            logging.info("Exitting")
+            logging.info("Exiting")
             return
-        
+
         if cmd[0] in ['start', 's', '']:
 
             if len(cmd) > 1:
@@ -39,24 +40,23 @@ def main(PORT):
         elif cmd[0] in ['control', 'c']:
             control(PORT)
             print(f"Starting control app")
-        
-        elif cmd[0] in ['test','t']:
+
+        elif cmd[0] in ['test', 't']:
             test('0.0.0.0', PORT)
 
-        
         elif cmd[0] in ['quit', 'q', 'exit']:
-            print(f"Exitting...")
+            print(f"Exiting...")
             return
 
         else:
             print(f"Invalid command: {' '.join(cmd)}")
-        
+
         print_help()
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=18888)
     args = parser.parse_args()
-    
+
     main(args.port)

@@ -1,32 +1,41 @@
-import socket
-import multiprocessing as mp
-import select
 import logging
-from typing import List
+import multiprocessing as mp
+import tqdm
+import socket
+from typing import List, Dict, Union, Any
 
+from config import N_PROC
 from .tcp_process import tcp_process_task
-
-from config import N_PROC, POLL_READ
+import os
+from config import  DATA_DIR
 
 MAX_LISTEN = 64
 
-def tcp_listen_task(address: str, port: int, measurement_name: str,client_addr_queue: mp.Queue=None) -> None:
+
+def tcp_listen_task(address: str, port: int, measurement_name: str, client_addr_queue: mp.Queue = None) -> None:
     # Create client listeners
+
+    # Check the existence of output directory
+    measurement_basedir = os.path.join(DATA_DIR, measurement_name)
+    # Use lock to avoid duplicate creation
+    if not os.path.exists(measurement_basedir):
+        os.makedirs(measurement_basedir)
     client_queues: List[mp.Queue] = [mp.Queue(maxsize=4) for _ in range(N_PROC)]
-    system_lock = mp.Lock()
+
     client_procs: List[mp.Process] = [
         mp.Process(None,
                    tcp_process_task,
                    f"tcp_process_{i}", (
                        client_queues[i],
-                       system_lock,
-                       measurement_name,
+                       measurement_basedir,
                        i,
                    ),
                    daemon=False) for i in range(N_PROC)
     ]
-    for proc in client_procs:  # Start all listeners
-        proc.start()
+    with tqdm.tqdm(range(len(client_procs))) as pbar:
+        for proc in client_procs:  # Start all listeners
+            proc.start()
+            pbar.update()
 
     n_client: int = 0
 
@@ -37,38 +46,32 @@ def tcp_listen_task(address: str, port: int, measurement_name: str,client_addr_q
     server_socket.listen(MAX_LISTEN)
     logging.info(f"Binding address {address}:{port}")
 
-    poller = select.poll()
-    poller.register(server_socket.fileno(), POLL_READ)
-
     try:
         while True:
-            epoll_list = poller.poll(1000)
 
-            for fd, events in epoll_list:
-                if events & (select.POLLIN | select.POLLPRI) and fd is server_socket.fileno():
-                    client_socket, (client_address, client_port) = server_socket.accept()
-                    logging.info(f"New client {client_address}:{client_port}")
+            client_socket, (client_address, client_port) = server_socket.accept()
+            logging.info(f"New client {client_address}:{client_port}")
 
-                    if client_addr_queue is not None:
-                        client_addr_queue.put(client_address)
-                    
-                    client_socket.setblocking(0)  # Non-blocking
+            if client_addr_queue is not None:
+                client_addr_queue.put(client_address)
 
-                    client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)  # Set keep-alive
-                    if hasattr(socket, "TCP_KEEPIDLE") and hasattr(socket, "TCP_KEEPINTVL") and hasattr(socket, "TCP_KEEPCNT"):
-                        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 60)
-                        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 60)
-                        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
+            client_socket.setblocking(True)  # Non-blocking
 
-                    # Evenly distribute client to subprocesses
-                    client_queues[n_client % N_PROC].put(
-                        {
-                            "addr": client_address, 
-                            "port": client_port, 
-                            "socket": client_socket
-                        }
-                    )
-                    n_client += 1
+            client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)  # Set keep-alive
+            if hasattr(socket, "TCP_KEEPIDLE") and hasattr(socket, "TCP_KEEPINTVL") and hasattr(socket,
+                                                                                                "TCP_KEEPCNT"):
+                client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 60)
+                client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 60)
+                client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
+
+            # Evenly distribute client to subprocesses
+            client_info: Dict[str, Union[socket, Any]] = {
+                "addr": client_address,
+                "port": client_port,
+                "socket": client_socket
+            }
+            client_queues[n_client % N_PROC].put(client_info)
+            n_client += 1
 
             if not any([proc.is_alive() for proc in client_procs]):
                 break
