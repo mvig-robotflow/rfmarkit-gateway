@@ -1,56 +1,52 @@
-"""proc_mem.py"""
-from typing import Dict
+"""proc_mem_auto.py"""
+from typing import Any, Dict, List, Tuple
 import os
 import zipfile
-import json
 import logging
 import glob
 import shutil
+import asyncio
+import sys
 
-from flask import Flask, request, Response
-from gevent import pywsgi
-
-from helpers import get_mem_from_url, convert_measurement, upload_file_oss
-
-# from credentials import OSS_ENDPOINT, OSS_BUCKET, OSS_ACCESSKEY, OSS_SECRETKEY
+from minio import Minio
+from minio.commonconfig import CopySource
+from helpers import download_file_oss, convert_measurement, upload_file_oss
 
 OSS_ENDPOINT = os.environ['OSS_ENDPOINT']
-OSS_BUCKET = os.environ['OSS_BUCKET']
+OSS_SRC_BUCKET = os.environ['OSS_SRC_BUCKET']
+OSS_DST_BUCKET = os.environ['OSS_DST_BUCKET']
 OSS_ACCESSKEY = os.environ['OSS_ACCESSKEY']
 OSS_SECRETKEY = os.environ['OSS_SECRETKEY']
-DEGUG:bool = bool(os.environ['DEBUG']) if 'DEBUG' in os.environ.keys() else False
 
 logging.basicConfig(level=logging.INFO)
 
-app = Flask(__name__)
 
-
-@app.route("/run", methods=['GET', 'POST'])
-def run():
-    resp = Response(mimetype='application/json')
-
-    try:
-        params = request.get_json()["value"]  # extract real arguments
-        logging.info(f"Got parameters: \n{params}")
-    except KeyError:
-        logging.error("No argument")
-        resp.status = 500
-        resp.data = json.dumps({"code": 500, "msg": "No argument"})
-        return resp
-    try:
-        url = params['url']
-        object_name = params['object_name']
-        bucket_name = params['bucket_name']
-    except KeyError:
-        print("[ Error ] Wrong parameters")
-        resp = Response(status=500)
-        resp.data = json.dumps({"code": 500, "msg": "Wrong parameters"})
-        return resp
-
+async def convert(object_name: str) -> Tuple[bool, str, Dict[str, Any]]:
+    tmp_dir: str = './tmp'
+    measurement_name = object_name.split('.')[0]
+    if measurement_name == '':
+        return False, object_name, dict()
+    
+    measurement_basedir = os.path.join(tmp_dir, measurement_name)
+    measurement_filename = object_name
+    
     # Download measurement and extract
-    measurement_name = get_mem_from_url(url, object_name)
-    logging.info(f"Sucessfully got measurement: {measurement_name}")
-    measurement_basedir = os.path.join('.', measurement_name)
+    ret: Dict[str, Any] = download_file_oss(OSS_ENDPOINT,
+                                            OSS_SRC_BUCKET,
+                                            OSS_ACCESSKEY,
+                                            OSS_SECRETKEY,
+                                            object_name,
+                                            measurement_filename)
+    if ret['status']:
+        # Unzip and get measurement name
+        with zipfile.ZipFile(measurement_filename) as f:
+            f.extractall(tmp_dir)
+        os.remove(measurement_filename)
+        # REMARK: There is an agreement that extraction will expand to ./{measurement_name}
+        logging.info(f"Got measurement: {measurement_name}")
+    else:
+        logging.error(f"Error occurs when downloading: \n {ret['error']}")
+        return False, object_name, ret
 
     # When converting measurement, error might occur
     postfix: str = ''
@@ -61,44 +57,77 @@ def run():
         logging.error(f"Error occurs when converting measurement: \n{err}")
         postfix = 'unprocessed'
 
-    # Create zip archive
+
+    # Create zip archive no matter what
     logging.info(f"Creating zip archive")
-    archive_filename = os.path.join('/tmp', f'{measurement_name}_{postfix}.zip')
-    filenames = glob.glob(os.path.join(measurement_basedir, '*'))
+    archive_filename: str = os.path.join(tmp_dir, f'{measurement_name}_{postfix}.zip')
+    filenames: List[str] = glob.glob(os.path.join(measurement_basedir, '*'))
     with zipfile.ZipFile(archive_filename, 'w', zipfile.ZIP_DEFLATED) as f:
         for filename in filenames:
             f.write(filename, os.path.join(f"{measurement_name}_{postfix}", os.path.basename(filename)))
 
-    # Upload to Object Storage
+    # Upload to DST_BUCKET no matter what
     logging.info(f"Uploading to oss")
     try:
-        ret: Dict = upload_file_oss(OSS_ENDPOINT, OSS_BUCKET, OSS_ACCESSKEY, OSS_SECRETKEY, archive_filename,
+        ret: Dict = upload_file_oss(OSS_ENDPOINT, OSS_DST_BUCKET, OSS_ACCESSKEY, OSS_SECRETKEY, archive_filename,
                                     f'{measurement_name}_{postfix}.zip')
     except Exception as err:
         logging.error(f"Exception occurs when uploading: {err}")
         ret = {'status': False}
-    os.remove(archive_filename)
-    shutil.rmtree(measurement_basedir)
+    logging.info(f"Upload succeeded") if ret['status'] else logging.error(f"Upload failed {ret}")
 
-    resp.status = 200 if ret['status'] else 500
-    resp.data = json.dumps({"code": resp.status}) if ret['status'] else json.dumps({"code": resp.status, "info": str(err)})
-    return resp
+    # Delete archive and local measurement anyway
+    try:
+        os.remove(archive_filename)
+        shutil.rmtree(measurement_basedir)
+    except FileNotFoundError as err:
+        logging.warning("File Not Found, the process might not be completed")
 
+    return True, object_name, ret
 
-@app.route("/init", methods=['GET', 'POST'])
+async def main_loop():
+    # Init minio client
+    failed_object_names: List[str] = []
+    minioClient = Minio(OSS_ENDPOINT, access_key=OSS_ACCESSKEY, secret_key=OSS_SECRETKEY, secure=False) 
+    while True:
+        objects_list = list(map(lambda x: x.object_name, minioClient.list_objects(OSS_SRC_BUCKET)))
+        if len(objects_list) > 0:
+            logging.info(f"Got {len(objects_list)} measurements, \n {len(failed_object_names)} failed objects:\n {failed_object_names}")
+
+        # Clean outdated failed objects
+        failed_object_names = list(filter(lambda x: x in objects_list, failed_object_names))
+        
+        # Filter out all failed_objects
+        results_list = await asyncio.gather(*[convert(object_name) for object_name in filter(lambda x: x not in failed_object_names, objects_list)])
+
+        # Convert measurements
+        for retcode, object_name, _ in results_list:
+            if not retcode:
+                logging.error(f"Failed to process {object_name}")
+                sys.stdout.flush()
+                failed_object_names.append(object_name)
+                failed_object_name = f"{object_name.split('.')[0]}_failed.{object_name.split('.')[-1]}"
+                minioClient.copy_object(bucket_name=OSS_DST_BUCKET, 
+                                        object_name=failed_object_name, 
+                                        source=CopySource(OSS_SRC_BUCKET, object_name))
+            
+            # Remove old object anyway
+            minioClient.remove_object(OSS_SRC_BUCKET, object_name)
+
+        await asyncio.sleep(10)
+
 def init():
-    resp = Response(mimetype='application/json')
-    resp.status = 200
-    resp.data = json.dumps({"code": 200})
-    return resp
+    pass
 
 
 if __name__ == '__main__':
+    """
+    Constantly monitor oss bucket and convert
 
-    SERVING_PORT: int = 18880
+    Warning: 
+    Files in OSS_SRC_BUCKET might be removed ! OSS_DST_BUCKET and OSS_SRC_BUCKET cannot be same !
+    """
+    assert OSS_SRC_BUCKET != OSS_DST_BUCKET
+    logging.info(f"Start watching buckets: \n > src: {OSS_ENDPOINT}/{OSS_SRC_BUCKET}\n > dst: {OSS_ENDPOINT}/{OSS_DST_BUCKET}\n")
     init()
-    if DEGUG:
-        app.run('0.0.0.0', SERVING_PORT)
-    else:
-        server = pywsgi.WSGIServer(('0.0.0.0', SERVING_PORT), app)
-        server.serve_forever()
+    asyncio.run(main_loop())

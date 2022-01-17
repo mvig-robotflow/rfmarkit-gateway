@@ -186,14 +186,14 @@ class IMUParser:
         return res
 
     def __call__(self, f: FileIO) -> List[Dict[str, float]]:
-        read_buf = f.read()  # TODO: Here we read all to memory, might fail in limited memory settings
+        read_buf = f.read()
         res = self._parse(read_buf)
         return res
 
 
 if __name__ == '__main__':
     gy = IMUParser()
-    with open('/home/liyutong/Tasks/imu-node-deploy/proc_measurement/process_0_29.dat', 'rb') as f:
+    with open('/Users/liyutong/projectExchange/imu-interface/proc_measurement/imu_mem_2022-01-07_214244/process_0_30.dat', 'rb') as f:
         res = gy(f)
 
     print(res)
