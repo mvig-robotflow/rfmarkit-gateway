@@ -165,7 +165,7 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
 
     # Dump numpy array
     for imu_id in all_measurement_np.keys():
-        np.savez(os.path.join(measurement_basedir, f'imu_{imu_id}.npz'), **all_measurement_np[imu_id])
+        np.savez(os.path.join(measurement_basedir, f'imu_{imu_id[-6:]}.npz'), **all_measurement_np[imu_id])
     """example
     >>> import numpy as np
     >>> npfile = np.load('./imu_mem_2021-10-21_211859/imu_84f7033b3e78.npz')
@@ -185,5 +185,5 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
 
 
 if __name__ == '__main__':
-    res = convert_measurement('/home/liyutong/Tasks/imu-node-deploy/imu_mem_2021-12-02_120528_unprocessed')
+    res = convert_measurement("C:\\Users\\liyutong\\projectExchange\\imu-interface\\tcp_broker\\imu_data\\imu_mem_2022-01-27_195105")
     print(res)
