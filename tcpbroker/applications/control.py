@@ -3,10 +3,7 @@ import multiprocessing as mp
 import socket
 import time
 from concurrent.futures import ThreadPoolExecutor
-
-logging.basicConfig(level=logging.INFO)
-
-from typing import List
+from typing import List, Union
 
 
 def hold(subnet, port):
@@ -55,7 +52,8 @@ def tcp_send_bytes(arguments):
 
 
 def gen_arguments(subnet: List[int], port: int, command: str,
-                  client_addrs: List[str] = None):  # WARNING: Only support *.*.*.0/24
+                  client_addrs: List[str] = None):
+    # FIXME: Only support *.*.*.0/24
     data = bytes(command, encoding='ascii')
 
     if client_addrs is None:
@@ -102,10 +100,10 @@ Commands: \n\
 def control(port: int, client_queue: mp.Queue = None):
     # Get subnet, like [10,52,24,0]
     try:
-        subnet: List[int] = list(map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.52.24.0\n> ").split(".")))
+        subnet: List[int] = list(map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.53.24.0\n> ").split(".")))
     except ValueError:
-        logging.info("Wrong input, use default value(10.52.24.0)")
-        subnet = [10, 52, 24, 0]
+        logging.info("Wrong input, use default value(10.53.24.0)")
+        subnet = [10, 53, 24, 0]
 
     except KeyboardInterrupt:
         print("Control Exiting")
@@ -116,7 +114,7 @@ Sending to {subnet}\n")
     print_help()
 
     if client_queue is not None:
-        client_addrs: set[str] = set([])
+        client_addrs: Union[None, set[str]] = set([])
     else:
         client_addrs = None
 
@@ -143,7 +141,7 @@ Sending to {subnet}\n")
                     if len(ret['msg']) > 0:
                         print(f"{(ret['addr'])} return: {ret['msg']}")
 
-            print_help()
+            # print_help()
     except KeyboardInterrupt:
         print("Control Exiting")
         return

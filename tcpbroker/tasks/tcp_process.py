@@ -1,14 +1,85 @@
+import io
 import logging
 import multiprocessing as mp
 import os
 import socket
 import time
-from typing import Any, Dict, BinaryIO
-
+from typing import Any, Dict, BinaryIO, List, Tuple
+from io import BufferedWriter
 import select
 
 from config import TCP_BUFF_SZ
-from helpers import insert_data, unregister_fd
+
+
+def insert_data(f: BinaryIO, data: bytes):
+    """Insert data to FileIO database (file)
+
+    Args:
+        f (BinaryIO): file handler
+        data (bytes): string formated data
+    """
+    if data is None:
+        return
+    f.write(data)
+
+
+def unregister_fd(fd: int,
+                  client_sockets: Dict[int, socket.socket],
+                  client_read_fds: List[int],
+                  file_handles: Dict[int, BinaryIO]):
+    """Unregister file descriptor
+
+    Args:
+        fd (int): [description]
+        client_sockets (Dict[int, socket.socket]): [description]
+        client_read_fds:
+        file_handles (Dict[int, BinaryIO]): [description]
+    """
+    client_sockets[fd].close()
+    file_handles[fd].close()
+    client_read_fds.remove(fd)
+    del client_sockets[fd]
+    del file_handles[fd]
+
+
+class ClientRegistration:
+    def __init__(self, basedir, proc_id):
+        self.basedir = basedir
+        self.proc_id = proc_id
+        self.socks: Dict[int, socket.socket] = {}
+        self.fds = []
+        self.ids: Dict[int, Dict[str, Any]] = {}
+        self.handles: Dict[int, BinaryIO] = {}
+        pass
+
+    def register(self, sock: socket.socket, addr, port):
+        fd = sock.fileno()
+        self.socks[fd] = sock
+        self.fds.append(fd)
+        self.ids[fd] = {
+            'addr': addr,
+            'port': port,
+            'transmited': False
+        }
+        if fd not in self.handles.keys():
+            self.handles[fd] = open(
+                        os.path.join(self.basedir, f'process_{str(self.proc_id)}_{fd}.dat'), 'ab')
+        else:
+            logging.warning(f"The fd: {fd} already has related file handle")
+
+    def get_info(self, fd) -> Tuple[str, int]:
+        return self.ids[fd]['addr'], self.ids[fd]['port']
+
+    def unregister(self, fd):
+        pass
+
+    def mark_as_online(self, fd):
+        self.ids[fd]['transmited'] = True
+        addr, port = self.get_info(fd)
+        logging.info(f"Client {addr}:{port} started sending data")
+
+    def flush(self):
+        pass
 
 
 def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, proc_id: int):
@@ -55,8 +126,8 @@ def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, pr
                         unregister_fd(fd, client_sockets, client_read_fds, file_handles)
                         continue
 
-                    if not client_identifiers[fd]["transmited"]:
-                        client_identifiers[fd]["transmited"] = True
+                    if not client_identifiers[fd]['transmited']:
+                        client_identifiers[fd]['transmited'] = True
                         logging.info(f"Client {client_addr}:{client_port} started sending data")
                     insert_data(file_handles[fd], data)  # TODO: Print info about client
                     # TODO: Optimize with BytesIO

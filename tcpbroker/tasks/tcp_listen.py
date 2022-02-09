@@ -3,7 +3,7 @@ import multiprocessing as mp
 import tqdm
 import socket
 from typing import List, Dict, Union, Any
-
+import time
 from config import N_PROC
 from .tcp_process import tcp_process_task
 import os
@@ -20,7 +20,7 @@ def tcp_listen_task(address: str, port: int, measurement_name: str, client_addr_
     # Use lock to avoid duplicate creation
     if not os.path.exists(measurement_basedir):
         os.makedirs(measurement_basedir)
-    client_queues: List[mp.Queue] = [mp.Queue(maxsize=4) for _ in range(N_PROC)]
+    client_queues: List[mp.Queue] = [mp.Queue(maxsize=16) for _ in range(N_PROC)]
 
     client_procs: List[mp.Process] = [
         mp.Process(None,
@@ -75,6 +75,8 @@ def tcp_listen_task(address: str, port: int, measurement_name: str, client_addr_
 
             if not any([proc.is_alive() for proc in client_procs]):
                 break
+            else:
+                time.sleep(0.01)
     except KeyboardInterrupt:
         logging.info("Main process capture keyboard interrupt")
 
