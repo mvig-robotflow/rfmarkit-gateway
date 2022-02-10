@@ -28,7 +28,7 @@ def main(PORT: int):
             logging.info("Exiting")
             return
 
-        if cmd[0] in ['start', 's', '']:
+        if cmd[0] in ['start', 's']:
 
             if len(cmd) > 1:
                 measurement_name = cmd[1]

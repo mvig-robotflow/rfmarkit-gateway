@@ -10,9 +10,9 @@ RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pip -U && \
     pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install -r requirements.txt
 
-COPY ["helpers.py", "proc_mem.py", "/opt/app/" ]
+COPY [ "cvt_measurement.py", "imu_parser.py", "digest.py", "/opt/app/" ]
 
 ENTRYPOINT ["python"]
 EXPOSE 18880
 
-CMD ["proc_mem.py"]
+CMD ["digest.py"]

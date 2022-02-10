@@ -9,7 +9,7 @@ COPY ["requirements.txt", "/opt/app/" ]
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install -r requirements.txt
 
-COPY ["config.py", "helpers.py", "main.py", "/opt/app/" ]
+COPY ["config.py", "main.py", "/opt/app/" ]
 COPY /tasks/ /opt/app/tasks/
 COPY /applications/ /opt/app/applications/
 

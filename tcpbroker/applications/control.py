@@ -40,7 +40,7 @@ def tcp_send_bytes(arguments):
             logging.warning(f"{err} for {addr}")
             return {"addr": addr, "msg": reply}
 
-    ctrl_socket.settimeout(10)  # TODO: Magic timeout
+    ctrl_socket.settimeout(2)  # TODO: Magic timeout
 
     try:
         ctrl_socket.send(data)
