@@ -1,8 +1,9 @@
 import argparse
 import logging
 from datetime import datetime
-
-from config import DEBUG
+import os
+from cvt_measurement import convert_measurement
+from config import DEBUG, DATA_DIR
 
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 
@@ -36,6 +37,12 @@ def main(PORT: int):
                 measurement_name = 'imu_mem_' + datetime.now().strftime("%Y-%m-%d_%H%M%S")
             print(f"Starting measurement: {measurement_name}")
             measure(PORT, measurement_name)
+            # Convert
+            try:
+                convert_measurement(os.path.join(DATA_DIR, measurement_name))
+            except Exception as e:
+                logging.warning(e)
+                raise e
 
         elif cmd[0] in ['control', 'c']:
             control(PORT)

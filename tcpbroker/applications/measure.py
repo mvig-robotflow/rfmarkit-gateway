@@ -11,6 +11,7 @@ from tasks import tcp_listen_task
 
 from .control import control
 from config import DEBUG, DATA_DIR
+
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 
 
