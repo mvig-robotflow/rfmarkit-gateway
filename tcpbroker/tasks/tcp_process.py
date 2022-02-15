@@ -108,7 +108,13 @@ def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, pr
             if len(registration) > 0:
                 client_read_ready_fds, _, _ = select.select(registration.fds, [], [])
                 for fd in client_read_ready_fds:
-                    data = registration.socks[fd].recv(TCP_BUFF_SZ)
+                    try:
+                        data = registration.socks[fd].recv(TCP_BUFF_SZ)
+                    except Exception as e:
+                        logging.warning(e)
+                        logging.warning(f"Client {registration.ids[fd]['addr']}:{registration.ids[fd]['port']} disconnected unexpectedly")
+                        registration.unregister(fd)
+                        continue
                     if len(data) <= 0:
                         logging.warning(f"Client {registration.ids[fd]['addr']}:{registration.ids[fd]['port']} disconnected unexpectedly")
                         registration.unregister(fd)
