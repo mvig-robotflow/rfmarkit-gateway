@@ -18,7 +18,7 @@ app = Flask(__name__)
 STOP_EV: mp.Event = mp.Event()
 FINISH_EV: mp.Event = mp.Event()
 TCP_PROCS: List[mp.Process] = []
-PORT: int = 0
+IMU_PORT: int = 0
 
 
 def make_response(status, msg="", **kwargs):
@@ -76,7 +76,7 @@ def index():
 
 @app.route("/start", methods=['POST', 'GET'])
 def start_record():
-    global TCP_PROCS, STOP_EV, FINISH_EV, SAVE_PATH_BASE, PORT
+    global TCP_PROCS, STOP_EV, FINISH_EV, SAVE_PATH_BASE, IMU_PORT
 
     # Wait until last capture ends
     if len(TCP_PROCS) > 0:
@@ -113,7 +113,7 @@ def start_record():
         if len(TCP_PROCS) <= 0:
             TCP_PROCS = [mp.Process(None, measure_headless, "measure_headless", (STOP_EV,
                                                                                  FINISH_EV,
-                                                                                 PORT,
+                                                                                 IMU_PORT,
                                                                                  measurement_name,
                                                                                  experiment_log,))]
             [proc.start() for proc in TCP_PROCS]
@@ -163,22 +163,22 @@ def quit():
         sys.exit(0)
 
 
-def portal(port: int):
+def portal(imu_port: int, api_port: int = 5050):
     # Recording parameters
-    global SAVE_PATH_BASE, CAMERA_INFO, CAMERA_GROUP, PORT
+    global SAVE_PATH_BASE, CAMERA_INFO, CAMERA_GROUP, IMU_PORT
 
     SAVE_PATH_BASE = "C:\\Users\\liyutong\\Data\\imu-highspeed-cam"
 
-    PORT = port
+    IMU_PORT = imu_port
 
     # setting global parameters
     logging.basicConfig(level=logging.INFO)
     # Prepare system
-    logging.info(f"[tcpbroker] Prepare tcpbroker:{PORT}")
+    logging.info(f"[tcpbroker] Prepare tcpbroker:{IMU_PORT} at {api_port}")
 
     try:
-        # app.run(host='0.0.0.0', port=5050)
-        server = pywsgi.WSGIServer(('0.0.0.0', 5050), app)
+        # app.run(host='0.0.0.0', port=api_port)
+        server = pywsgi.WSGIServer(('0.0.0.0', api_port), app)
         server.serve_forever()
     except KeyboardInterrupt:
         print(f"[tcpbroker]:  Main got KeyboardInterrupt")
@@ -186,4 +186,4 @@ def portal(port: int):
 
 
 if __name__ == '__main__':
-    portal(18888)
+    portal(18888, 5050)

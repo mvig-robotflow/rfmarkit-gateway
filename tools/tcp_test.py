@@ -9,10 +9,10 @@ ID = str(uuid.uuid1())[:12]
 {"id":"84f7033b3e78","timestamp":1634821243683675,}
 
 HOST: str = "localhost"
-PORT: int = 18888
+IMU_PORT: int = 18888
 if __name__ == '__main__':
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_sock.connect((HOST, PORT))
+    client_sock.connect((HOST, IMU_PORT))
     try:
         while True:
             time.sleep(0.01)

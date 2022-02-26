@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 import os
 from cvt_measurement import convert_measurement
-from config import DEBUG, DATA_DIR, CONFIG
+from config import DEBUG, DATA_DIR, CONFIG, API_PORT
 
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 
@@ -25,7 +25,7 @@ def main(args):
     print_help()
     port = args.port
     if args.p:
-        portal(port)
+        portal(port, API_PORT)
         exit(0)
 
     while True:
@@ -57,7 +57,7 @@ def main(args):
         elif cmd[0] in ['test', 't']:
             test('0.0.0.0', port)
         elif cmd[0] in ['portal', 'p']:
-            portal(port)
+            portal(port, API_PORT)
 
         elif cmd[0] in ['quit', 'q', 'exit']:
             print(f"Exiting....")

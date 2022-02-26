@@ -20,3 +20,5 @@ if os.path.exists(CONFIGURATION_PATH):
             CONFIG = None
 else:
     CONFIG = None
+
+API_PORT: int = 5051
