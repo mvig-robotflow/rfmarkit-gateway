@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import os
+import json
 
 # Constants
 TCP_BUFF_SZ: int = 1024
@@ -9,3 +10,13 @@ POLL_TIMEOUT_MS: int = 1000
 DEBUG: bool = 'DEBUG' in os.environ.keys()
 N_PROC = int(os.environ['N_PROC']) if 'N_PROC' in os.environ.keys() else min(4, mp.cpu_count())
 DATA_DIR: str = os.environ['DATA_DIR'] if 'DATA_DIR' in os.environ.keys() else './imu_data'
+
+CONFIGURATION_PATH = "./config.json"
+if os.path.exists(CONFIGURATION_PATH):
+    with open(CONFIGURATION_PATH, 'r') as f:
+        try:
+            CONFIG = json.load(f)
+        except:
+            CONFIG = None
+else:
+    CONFIG = None

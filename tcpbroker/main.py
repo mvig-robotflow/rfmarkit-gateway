@@ -3,11 +3,11 @@ import logging
 from datetime import datetime
 import os
 from cvt_measurement import convert_measurement
-from config import DEBUG, DATA_DIR
+from config import DEBUG, DATA_DIR, CONFIG
 
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 
-from applications import measure, control, test
+from applications import measure, control, test, portal
 
 
 def print_help():
@@ -16,12 +16,18 @@ def print_help():
     > start [measurement_name] - start measurement\n\
     > control - begin control program\n\
     > test    - begin test program\n\
+    > portal  - enter portal mode\n\
     > quit    - quit program\n")
 
 
-def main(PORT: int):
+def main(args):
     print("Welcome to Inertial Measurement Unit Data collecting system \n\n")
     print_help()
+    port = args.port
+    if args.p:
+        portal(port)
+        exit(0)
+
     while True:
         try:
             cmd = input("> ").split(' ')
@@ -35,8 +41,8 @@ def main(PORT: int):
                 measurement_name = cmd[1]
             else:
                 measurement_name = 'imu_mem_' + datetime.now().strftime("%Y-%m-%d_%H%M%S")
-            print(f"Starting measurement: {measurement_name}")
-            measure(PORT, measurement_name)
+            print(f"Starting measurement: {measurement_name}, press Ctrl+D to stop")
+            measure(port, measurement_name, False)
             # Convert
             try:
                 convert_measurement(os.path.join(DATA_DIR, measurement_name))
@@ -45,15 +51,17 @@ def main(PORT: int):
                 raise e
 
         elif cmd[0] in ['control', 'c']:
-            control(PORT)
+            control(port)
             print(f"Starting control app")
 
         elif cmd[0] in ['test', 't']:
-            test('0.0.0.0', PORT)
+            test('0.0.0.0', port)
+        elif cmd[0] in ['portal', 'p']:
+            portal(port)
 
         elif cmd[0] in ['quit', 'q', 'exit']:
-            print(f"Exiting...")
-            return
+            print(f"Exiting....")
+            exit(0)
 
         else:
             print(f"Invalid command: {' '.join(cmd)}")
@@ -64,6 +72,7 @@ def main(PORT: int):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=18888)
+    parser.add_argument('-p', action="store_true")
     args = parser.parse_args()
 
-    main(args.port)
+    main(args)

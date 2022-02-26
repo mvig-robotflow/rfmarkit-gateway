@@ -35,6 +35,7 @@ def unregister_fd(fd: int,
         client_read_fds:
         file_handles (Dict[int, BinaryIO]): [description]
     """
+    client_sockets[fd].shutdown()
     client_sockets[fd].close()
     file_handles[fd].close()
     client_read_fds.remove(fd)
@@ -78,6 +79,7 @@ class ClientRegistration:
         return self.ids[fd]['addr'], self.ids[fd]['port']
 
     def unregister(self, fd):
+        self.socks[fd].shutdown(2)
         self.socks[fd].close()
         del self.socks[fd]
 
@@ -85,6 +87,13 @@ class ClientRegistration:
         del self.handles[fd]
 
         self.fds.remove(fd)
+
+    def close(self):
+        for fd in self.fds:
+            self.socks[fd].shutdown(2)
+            self.socks[fd].close()
+            self.handles[fd].close()
+        self.__init__(self.basedir, self.proc_id)
 
     def mark_as_online(self, fd):
         self.ids[fd]['transmited'] = True
@@ -96,7 +105,7 @@ class ClientRegistration:
             handle.close()
 
 
-def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, proc_id: int):
+def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, proc_id: int, stop_ev: mp.Event):
     registration = ClientRegistration(measurement_basedir, proc_id)
 
     try:
@@ -106,7 +115,7 @@ def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, pr
                 registration.register(new_client["socket"], new_client["addr"], new_client["port"])
 
             if len(registration) > 0:
-                client_read_ready_fds, _, _ = select.select(registration.fds, [], [])
+                client_read_ready_fds, _, _ = select.select(registration.fds, [], [], 1)
                 for fd in client_read_ready_fds:
                     try:
                         data = registration.socks[fd].recv(TCP_BUFF_SZ)
@@ -125,8 +134,13 @@ def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, pr
 
                     insert_data(registration.handles[fd], data)
 
+            if stop_ev.is_set():
+                logging.debug("Clossing sockets")
+                registration.close()
+                return
+
             else:
                 time.sleep(0.01)
     except KeyboardInterrupt:
         logging.debug(f"process {proc_id} is exitting")
-        registration.flush()
+        registration.close()

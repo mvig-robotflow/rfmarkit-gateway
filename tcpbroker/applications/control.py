@@ -4,6 +4,7 @@ import socket
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Union
+from config import CONFIG
 
 
 def hold(subnet, port):
@@ -99,15 +100,19 @@ Commands: \n\
 
 def control(port: int, client_queue: mp.Queue = None):
     # Get subnet, like [10,52,24,0]
-    try:
-        subnet: List[int] = list(map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.53.24.0\n> ").split(".")))
-    except ValueError:
-        logging.info("Wrong input, use default value(10.53.24.0)")
-        subnet = [10, 53, 24, 0]
+    if CONFIG is not None:
+        if "default_subnet" in CONFIG.keys():
+            subnet = CONFIG['default_subnet']
+    else:
+        try:
+            subnet: List[int] = list(map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.53.24.0\n> ").split(".")))
+        except ValueError:
+            logging.info("Wrong input, use default value(10.53.24.0)")
+            subnet = [10, 53, 24, 0]
 
-    except KeyboardInterrupt:
-        print("Control Exiting")
-        return
+        except KeyboardInterrupt:
+            print("Control Exiting")
+            return
 
     print(f"Welcome to Inertial Measurement Unit control system \n\n \
 Sending to {subnet}\n")
