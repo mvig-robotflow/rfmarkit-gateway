@@ -1,5 +1,10 @@
 from setuptools import setup, find_packages
 
+requirements = [
+    'flask',
+    'gevent',
+]
+
 setup(
     name="tcpbroker",
     version="1.0",
@@ -8,6 +13,7 @@ setup(
     description="IMU message broker",
     packages=["tcpbroker", "tcpbroker.applications", "tcpbroker.tasks"],
     python_requires=">=3.6",
+    install_requires=requirements
     # entrypoints={
     #     'console_scripts': [
     #         'tcpbroker = tcpbrocker.main:main'
