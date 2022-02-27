@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import logging
 
 import numpy as np
-from IMUParser import IMUParser
+from .IMUParser import IMUParser
 
 
 def vectorize_to_np(record_list: List[Dict[str, Any]], keys: List[str]) -> Dict[str, np.ndarray]:
