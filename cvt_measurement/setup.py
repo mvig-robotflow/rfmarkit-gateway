@@ -1,4 +1,9 @@
-from setuptools import setup, find_packages
+from setuptools import setup
+
+requirements = [
+    'numpy',
+    'tqdm',
+]
 
 setup(
     name="cvt_measurement",
@@ -8,4 +13,5 @@ setup(
     description="Toolkit to convert IMU measurement",
     packages=["cvt_measurement"],
     python_requires=">=3.6",
+    install_requires=requirements
 )

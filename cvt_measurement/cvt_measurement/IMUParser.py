@@ -1,8 +1,8 @@
 import logging
+import struct
 from typing import List, Dict, BinaryIO
 
 import numpy as np
-import struct
 
 
 class IMUParser:

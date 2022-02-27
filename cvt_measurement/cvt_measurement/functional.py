@@ -1,10 +1,11 @@
 import glob
-import os
-import tqdm
-from typing import List, Dict, Any
 import logging
+import os
+from typing import List, Dict, Any
 
 import numpy as np
+import tqdm
+
 from .IMUParser import IMUParser
 
 
