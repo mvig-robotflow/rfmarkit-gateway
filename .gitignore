@@ -1,9 +1,16 @@
 *.bin
 *.dat
 *.pyc
+*.whl
+
 */imu_data
 tools/data
 ota/*
+
 *.DS_Store
 .vscode
 .idea
+
+/cvt_measurement/build/
+/cvt_measurement/cvt_measurement.egg-info/
+/cvt_measurement/dist/
