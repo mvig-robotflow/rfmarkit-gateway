@@ -9,9 +9,10 @@ from datetime import datetime
 from typing import List
 
 from flask import Flask, request, Response
-from tasks import tcp_listen_task
 from gevent import pywsgi
+
 from cvt_measurement import convert_measurement
+from tcpbroker.tasks import tcp_listen_task
 
 app = Flask(__name__)
 
@@ -29,7 +30,7 @@ def make_response(status, msg="", **kwargs):
     return resp
 
 
-from config import DATA_DIR
+from tcpbroker.config import DATA_DIR
 
 
 def measure_headless(measure_stop_ev: mp.Event(),
@@ -63,8 +64,7 @@ def measure_headless(measure_stop_ev: mp.Event(),
     try:
         convert_measurement(os.path.join(DATA_DIR, measurement_name))
     except Exception as e:
-        logging.warning(e)
-        raise e
+        logging.warning(f"[cvt_measurement] {e}")
 
     measure_finish_ev.set()
 
@@ -76,7 +76,7 @@ def index():
 
 @app.route("/start", methods=['POST', 'GET'])
 def start_record():
-    global TCP_PROCS, STOP_EV, FINISH_EV, SAVE_PATH_BASE, IMU_PORT
+    global TCP_PROCS, STOP_EV, FINISH_EV, IMU_PORT
 
     # Wait until last capture ends
     if len(TCP_PROCS) > 0:
@@ -99,7 +99,7 @@ def start_record():
 
         # Get measurement name
         try:
-            measurement_name = request.get_json()["measurement_name"]  # extract measurement name
+            measurement_name = request.get_json()["subpath"]  # extract measurement name
             logging.info(f"[tcpbroker] measurement_name={measurement_name}")
         except Exception:
             measurement_name = measurement_name = 'imu_mem_' + datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -165,9 +165,7 @@ def quit():
 
 def portal(imu_port: int, api_port: int = 5050):
     # Recording parameters
-    global SAVE_PATH_BASE, CAMERA_INFO, CAMERA_GROUP, IMU_PORT
-
-    SAVE_PATH_BASE = "C:\\Users\\liyutong\\Data\\imu-highspeed-cam"
+    global CAMERA_INFO, CAMERA_GROUP, IMU_PORT
 
     IMU_PORT = imu_port
 

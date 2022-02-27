@@ -1,14 +1,10 @@
-import glob
 import logging
 import multiprocessing as mp
 import os
-import time
-import signal
 
-from tasks import tcp_listen_task
-
+from tcpbroker.config import DEBUG, DATA_DIR
+from tcpbroker.tasks import tcp_listen_task
 from .control import control
-from config import DEBUG, DATA_DIR
 
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 

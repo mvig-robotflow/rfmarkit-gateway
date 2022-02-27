@@ -1,14 +1,12 @@
-import io
 import logging
 import multiprocessing as mp
 import os
+import select
 import socket
 import time
 from typing import Any, Dict, BinaryIO, List, Tuple
-from io import BufferedWriter
-import select
 
-from config import TCP_BUFF_SZ
+from tcpbroker.config import TCP_BUFF_SZ
 
 
 def insert_data(f: BinaryIO, data: bytes):
@@ -79,7 +77,11 @@ class ClientRegistration:
         return self.ids[fd]['addr'], self.ids[fd]['port']
 
     def unregister(self, fd):
-        self.socks[fd].shutdown(2)
+        # Detect if the socket is closed by imu
+        if getattr(self.socks[fd], '_closed'):
+            # If not closed by imu, then the case is that we intend to close socket for some reason
+            # -> use shutdown to notify imu
+            self.socks[fd].shutdown(2)
         self.socks[fd].close()
         del self.socks[fd]
 
@@ -90,7 +92,8 @@ class ClientRegistration:
 
     def close(self):
         for fd in self.fds:
-            self.socks[fd].shutdown(2)
+            if getattr(self.socks[fd], '_closed'):
+                self.socks[fd].shutdown(2)
             self.socks[fd].close()
             self.handles[fd].close()
         self.__init__(self.basedir, self.proc_id)

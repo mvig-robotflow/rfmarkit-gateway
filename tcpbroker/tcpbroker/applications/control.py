@@ -3,7 +3,8 @@ import multiprocessing as mp
 import socket
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Union
-from config import CONFIG
+
+from tcpbroker.config import DEFAULT_SUBNET
 
 
 def tcp_send_bytes(arguments):
@@ -38,7 +39,7 @@ def tcp_send_bytes(arguments):
 
 
 def gen_arguments(subnet: List[int], port: int, command: str,
-                  client_addrs: set[str] = None):
+                  client_addrs: set = None):
     # FIXME: Only support *.*.*.0/24
     data = bytes(command, encoding='ascii')
 
@@ -52,7 +53,7 @@ def gen_arguments(subnet: List[int], port: int, command: str,
             yield {'addr': addr, 'port': port, 'data': data}
 
 
-def probe(subnet: List[int], port: int, client_addrs: set[str]) -> set:
+def probe(subnet: List[int], port: int, client_addrs: set) -> set:
     """
     Probe clients using ping
     Args:
@@ -73,7 +74,7 @@ def probe(subnet: List[int], port: int, client_addrs: set[str]) -> set:
     return res
 
 
-def broadcast_command(subnet: List[int], port: int, command: str, client_addrs: set[str]):
+def broadcast_command(subnet: List[int], port: int, command: str, client_addrs: Union[set, None]):
     # loop = asyncio.get_event_loop()
     # send_tasks = [asyncio.ensure_future(tcp_send_bytes(arguments)) for arguments in gen_arguments(subnet, port, command, client_addrs)]
     # loop.run_until_complete(asyncio.wait(send_tasks))
@@ -108,14 +109,14 @@ Commands: \n\
 
 def control(port: int, client_queue: mp.Queue = None):
     # Get subnet, like [10,52,24,0]
-    if CONFIG is not None and "default_subnet" in CONFIG.keys():
-        subnet = list(map(lambda x: int(x), CONFIG['default_subnet'].split(".")))
-    else:
+    subnet = list(map(lambda x: int(x), DEFAULT_SUBNET.split("."))) if DEFAULT_SUBNET is not None else None
+    if subnet is None:
         try:
-            subnet: List[int] = list(map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.53.24.0\n> ").split(".")))
+            subnet: List[int] = list(
+                map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.53.24.0\n> ").split(".")))
         except ValueError:
-            logging.info("Wrong input, use default value(10.53.24.0)")
-            subnet = [10, 53, 24, 0]
+            logging.info("Wrong input, use default value(192.168.1.0)")
+            subnet = [192, 168, 1, 0]
 
         except KeyboardInterrupt:
             print("Control Exiting")
@@ -125,7 +126,7 @@ def control(port: int, client_queue: mp.Queue = None):
     print_help()
 
     if client_queue is not None:
-        client_addrs: Union[None, set[str]] = set([])
+        client_addrs: Union[None, set] = set([])
     else:
         client_addrs = None
 

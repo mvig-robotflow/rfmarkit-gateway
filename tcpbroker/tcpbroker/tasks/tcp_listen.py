@@ -1,14 +1,16 @@
 import logging
 import multiprocessing as mp
-import tqdm
-import socket
-from typing import List, Dict, Union, Any
-import time
-from config import N_PROC
-from .tcp_process import tcp_process_task
 import os
-from config import DATA_DIR
 import select
+import socket
+import time
+from typing import List, Dict, Union, Any
+
+import tqdm
+
+from tcpbroker.config import DATA_DIR
+from tcpbroker.config import N_PROCS
+from .tcp_process import tcp_process_task
 
 MAX_LISTEN = 64
 
@@ -27,7 +29,7 @@ def tcp_listen_task(address: str,
     # Use lock to avoid duplicate creation
     if not os.path.exists(measurement_basedir):
         os.makedirs(measurement_basedir)
-    client_queues: List[mp.Queue] = [mp.Queue(maxsize=16) for _ in range(N_PROC)]
+    client_queues: List[mp.Queue] = [mp.Queue(maxsize=16) for _ in range(N_PROCS)]
 
     client_procs: List[mp.Process] = [
         mp.Process(None,
@@ -38,7 +40,7 @@ def tcp_listen_task(address: str,
                        i,
                        stop_ev,
                    ),
-                   daemon=False) for i in range(N_PROC)
+                   daemon=False) for i in range(N_PROCS)
     ]
     with tqdm.tqdm(range(len(client_procs))) as pbar:
         for proc in client_procs:  # Start all listeners
@@ -79,7 +81,7 @@ def tcp_listen_task(address: str,
                     "port": client_port,
                     "socket": client_socket
                 }
-                client_queues[n_client % N_PROC].put(client_info)
+                client_queues[n_client % N_PROCS].put(client_info)
                 n_client += 1
 
             if not any([proc.is_alive() for proc in client_procs]) or stop_ev.is_set():
