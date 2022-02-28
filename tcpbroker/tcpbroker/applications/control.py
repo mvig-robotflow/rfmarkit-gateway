@@ -33,7 +33,8 @@ def tcp_send_bytes(arguments):
         while True:
             reply += str(ctrl_socket.recv(1024), encoding='ascii')
     except socket.timeout:
-        logging.warning(f"Socket timeout for {addr}")
+        # logging.warning(f"Socket timeout for {addr}")
+        pass
 
     return {"addr": addr, "msg": reply}
 
@@ -68,9 +69,12 @@ def probe(subnet: List[int], port: int, client_addrs: set) -> set:
     with ThreadPoolExecutor(64) as executor:
         if client_addrs is not None:
             print(f"Sending to: {client_addrs}")
-        for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, 'ping\n', client_addrs)):
+        for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, 'blink_get', client_addrs)):
             if len(ret['msg']) > 0:
+                res_no_crlf = ret['msg'].split('\n')[0]
                 res.add(ret['addr'])
+                print(f"{(ret['addr'])} return: {res_no_crlf}")
+
     return res
 
 
@@ -83,7 +87,8 @@ def broadcast_command(subnet: List[int], port: int, command: str, client_addrs: 
             print(f"Sending to: {client_addrs}")
         for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command, client_addrs)):
             if len(ret['msg']) > 0:
-                print(f"{(ret['addr'])} return: {ret['msg']}")
+                res_no_crlf = ret['msg'].split('\n')[0]
+                print(f"{(ret['addr'])} return: {res_no_crlf}")
 
 
 def print_help():
@@ -141,7 +146,8 @@ def control(port: int, client_queue: mp.Queue = None):
             if command == '':
                 continue
             elif command in ['probe', 'p']:
-                client_addrs = probe(subnet, port, client_addrs)
+                client_addrs = probe(subnet, port, None)
+                continue
             elif command in ['quit', 'q']:
                 break
 

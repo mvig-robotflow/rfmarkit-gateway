@@ -19,4 +19,4 @@ ENV PYTHONPATH "${PYTHONPATH}:/opt/app/"
 
 EXPOSE 18888 5050
 
-CMD ["./tcpbroker/main.py", "-p"]
+CMD ["./tcpbroker/main.py"]
