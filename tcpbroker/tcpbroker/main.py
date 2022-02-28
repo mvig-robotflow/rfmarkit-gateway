@@ -3,12 +3,12 @@ import logging
 import os
 from datetime import datetime
 
-from config import DEBUG, DATA_DIR, API_PORT
+from tcpbroker.config import DEBUG, DATA_DIR, API_PORT
 from cvt_measurement import convert_measurement
 
 logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
 
-from applications import measure, control, test, portal
+from tcpbroker.applications import measure, control, test, portal
 
 
 def print_help():
