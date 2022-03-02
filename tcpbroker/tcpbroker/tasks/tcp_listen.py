@@ -8,15 +8,13 @@ from typing import List, Dict, Union, Any
 
 import tqdm
 
-from tcpbroker.config import DATA_DIR
-from tcpbroker.config import N_PROCS
+from tcpbroker.config import BrokerConfig
 from .tcp_process import tcp_process_task
-
-MAX_LISTEN = 64
 
 
 def tcp_listen_task(address: str,
                     port: int,
+                    config: BrokerConfig,
                     measurement_name: str,
                     stop_ev: mp.Event,
                     finish_ev: mp.Event,
@@ -25,22 +23,23 @@ def tcp_listen_task(address: str,
     # Create client listeners
 
     # Check the existence of output directory
-    measurement_basedir = os.path.join(DATA_DIR, measurement_name)
+    measurement_basedir = os.path.join(config.DATA_DIR, measurement_name)
     # Use lock to avoid duplicate creation
     if not os.path.exists(measurement_basedir):
         os.makedirs(measurement_basedir)
-    client_queues: List[mp.Queue] = [mp.Queue(maxsize=16) for _ in range(N_PROCS)]
+    client_queues: List[mp.Queue] = [mp.Queue() for _ in range(config.N_PROCS)]
 
     client_procs: List[mp.Process] = [
         mp.Process(None,
                    tcp_process_task,
                    f"tcp_process_{i}", (
                        client_queues[i],
+                       config,
                        measurement_basedir,
                        i,
                        stop_ev,
                    ),
-                   daemon=False) for i in range(N_PROCS)
+                   daemon=False) for i in range(config.N_PROCS)
     ]
     with tqdm.tqdm(range(len(client_procs))) as pbar:
         for proc in client_procs:  # Start all listeners
@@ -53,7 +52,7 @@ def tcp_listen_task(address: str,
     server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((address, port))
-    server_socket.listen(MAX_LISTEN)
+    server_socket.listen(config.N_PROCS)
     logging.info(f"Binding address {address}:{port}")
 
     try:
@@ -81,7 +80,7 @@ def tcp_listen_task(address: str,
                     "port": client_port,
                     "socket": client_socket
                 }
-                client_queues[n_client % N_PROCS].put(client_info)
+                client_queues[n_client % config.N_PROCS].put(client_info)
                 n_client += 1
 
             if not any([proc.is_alive() for proc in client_procs]) or stop_ev.is_set():

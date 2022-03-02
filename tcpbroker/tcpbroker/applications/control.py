@@ -4,7 +4,7 @@ import socket
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Union
 
-from tcpbroker.config import DEFAULT_SUBNET
+from tcpbroker.config import BrokerConfig
 
 
 def tcp_send_bytes(arguments):
@@ -54,7 +54,7 @@ def gen_arguments(subnet: List[int], port: int, command: str,
             yield {'addr': addr, 'port': port, 'data': data}
 
 
-def probe(subnet: List[int], port: int, client_addrs: set) -> set:
+def probe(subnet: List[int], port: int, client_addrs: Union[set, None]) -> set:
     """
     Probe clients using ping
     Args:
@@ -112,9 +112,9 @@ Commands: \n\
     > quit* - quit this tool\n\n")
 
 
-def control(port: int, client_queue: mp.Queue = None):
+def control(port: int, config: BrokerConfig, client_queue: mp.Queue = None):
     # Get subnet, like [10,52,24,0]
-    subnet = list(map(lambda x: int(x), DEFAULT_SUBNET.split("."))) if DEFAULT_SUBNET is not None else None
+    subnet = list(map(lambda x: int(x), config.DEFAULT_SUBNET.split("."))) if config.DEFAULT_SUBNET is not None else None
     if subnet is None:
         try:
             subnet: List[int] = list(
@@ -138,7 +138,7 @@ def control(port: int, client_queue: mp.Queue = None):
     try:
         while True:
             if client_addrs is not None:
-                print(f"Online clients: {client_addrs}")
+                print(f"Online clients [{len(client_addrs)}] : {client_addrs}")
             if client_queue is not None:
                 while not client_queue.empty():
                     client_addrs.add(str(client_queue.get()))
@@ -160,4 +160,4 @@ def control(port: int, client_queue: mp.Queue = None):
 
 
 if __name__ == '__main__':
-    control(18888)
+    control(18888, BrokerConfig('./config.json'))

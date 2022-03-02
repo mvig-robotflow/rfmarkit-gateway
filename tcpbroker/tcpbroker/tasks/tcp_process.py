@@ -6,7 +6,9 @@ import socket
 import time
 from typing import Any, Dict, BinaryIO, List, Tuple
 
-from tcpbroker.config import TCP_BUFF_SZ
+from tcpbroker.config import BrokerConfig
+
+logging.basicConfig(level=logging.INFO)
 
 
 def insert_data(f: BinaryIO, data: bytes):
@@ -108,8 +110,9 @@ class ClientRegistration:
             handle.close()
 
 
-def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, proc_id: int, stop_ev: mp.Event):
+def tcp_process_task(client_socket_queue: mp.Queue, config: BrokerConfig, measurement_basedir: str, proc_id: int, stop_ev: mp.Event):
     registration = ClientRegistration(measurement_basedir, proc_id)
+    recv_size = config.TCP_BUFF_SZ
 
     try:
         while True:
@@ -121,7 +124,7 @@ def tcp_process_task(client_socket_queue: mp.Queue, measurement_basedir: str, pr
                 client_read_ready_fds, _, _ = select.select(registration.fds, [], [], 1)
                 for fd in client_read_ready_fds:
                     try:
-                        data = registration.socks[fd].recv(TCP_BUFF_SZ)
+                        data = registration.socks[fd].recv(recv_size)
                     except Exception as e:
                         logging.warning(e)
                         logging.warning(f"Client {registration.ids[fd]['addr']}:{registration.ids[fd]['port']} disconnected unexpectedly")

@@ -3,11 +3,7 @@ import logging
 import os
 from datetime import datetime
 
-from tcpbroker.config import DEBUG, DATA_DIR, API_PORT
 from cvt_measurement import convert_measurement
-
-logging.basicConfig(level=logging.DEBUG) if DEBUG else logging.basicConfig(level=logging.INFO)
-
 from tcpbroker.applications import measure, control, test, portal
 
 
@@ -22,11 +18,16 @@ def print_help():
 
 
 def main(args):
+    from tcpbroker.config import BrokerConfig
+    config = BrokerConfig(args.config)
+
+    logging.basicConfig(level=logging.DEBUG) if config.DEBUG else logging.basicConfig(level=logging.INFO)
+
     print("Welcome to Inertial Measurement Unit Data collecting system \n\n")
     print_help()
     port = args.port
     if args.p:
-        portal(port, API_PORT)
+        portal(port, config, config.API_PORT)
         exit(0)
 
     while True:
@@ -43,22 +44,21 @@ def main(args):
             else:
                 measurement_name = 'imu_mem_' + datetime.now().strftime("%Y-%m-%d_%H%M%S")
             print(f"Starting measurement: {measurement_name}, enter quit/q to stop")
-            measure(port, measurement_name, False)
+            measure(port, config, measurement_name, False)
             # Convert
             try:
-                convert_measurement(os.path.join(DATA_DIR, measurement_name))
+                convert_measurement(os.path.join(config.DATA_DIR, measurement_name))
             except Exception as e:
                 logging.warning(e)
-                raise e
 
         elif cmd[0] in ['control', 'c']:
-            control(port)
+            control(port, config)
             print(f"Starting control app")
 
         elif cmd[0] in ['test', 't']:
             test('0.0.0.0', port)
         elif cmd[0] in ['portal', 'p']:
-            portal(port, API_PORT)
+            portal(port, config, config.API_PORT)
 
         elif cmd[0] in ['quit', 'q', 'exit']:
             print(f"Exiting....")
@@ -74,6 +74,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=18888)
     parser.add_argument('-p', action="store_true")
+    parser.add_argument('--config', type=str, default='./config.json')
     args = parser.parse_args()
 
     main(args)

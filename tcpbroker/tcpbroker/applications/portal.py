@@ -12,6 +12,7 @@ from flask import Flask, request, Response
 from gevent import pywsgi
 
 from cvt_measurement import convert_measurement
+from tcpbroker.config import BrokerConfig
 from tcpbroker.tasks import tcp_listen_task
 
 app = Flask(__name__)
@@ -20,6 +21,7 @@ STOP_EV: mp.Event = mp.Event()
 FINISH_EV: mp.Event = mp.Event()
 TCP_PROCS: List[mp.Process] = []
 IMU_PORT: int = 0
+CONFIG: BrokerConfig = BrokerConfig('./config.json')
 
 
 def make_response(status, msg="", **kwargs):
@@ -30,22 +32,20 @@ def make_response(status, msg="", **kwargs):
     return resp
 
 
-from tcpbroker.config import DATA_DIR
-
-
 def measure_headless(measure_stop_ev: mp.Event(),
                      measure_finish_ev: mp.Event(),
                      port: int,
+                     config: BrokerConfig,
                      measurement_name: str,
                      experiment_log: str):
     stop_ev = mp.Event()
     finish_ev = mp.Event()
 
     # Listen TCP
-    client_addr_queue = mp.Queue(maxsize=32)
+    client_addr_queue = mp.Queue()
 
     tcp_listen_task_process = mp.Process(None, tcp_listen_task, "tcp_listen_task",
-                                         ('0.0.0.0', port, measurement_name, stop_ev, finish_ev, client_addr_queue,))
+                                         ('0.0.0.0', port, config, measurement_name, stop_ev, finish_ev, client_addr_queue,))
     tcp_listen_task_process.start()
 
     measure_stop_ev.wait()
@@ -53,7 +53,7 @@ def measure_headless(measure_stop_ev: mp.Event(),
     finish_ev.wait()
 
     # Write readme
-    measurement_basedir = os.path.join(DATA_DIR, measurement_name)
+    measurement_basedir = os.path.join(config.DATA_DIR, measurement_name)
     logging.info(f"[tcpbroker] Writting README to {measurement_basedir}")
 
     with open(os.path.join(measurement_basedir, 'README'), 'w') as f:
@@ -62,7 +62,7 @@ def measure_headless(measure_stop_ev: mp.Event(),
 
     # Convert
     try:
-        convert_measurement(os.path.join(DATA_DIR, measurement_name))
+        convert_measurement(os.path.join(config.DATA_DIR, measurement_name))
     except Exception as e:
         logging.warning(f"[cvt_measurement] {e}")
 
@@ -76,7 +76,7 @@ def index():
 
 @app.route("/start", methods=['POST', 'GET'])
 def start_record():
-    global TCP_PROCS, STOP_EV, FINISH_EV, IMU_PORT
+    global TCP_PROCS, STOP_EV, FINISH_EV, IMU_PORT, CONFIG
 
     # Wait until last capture ends
     if len(TCP_PROCS) > 0:
@@ -114,6 +114,7 @@ def start_record():
             TCP_PROCS = [mp.Process(None, measure_headless, "measure_headless", (STOP_EV,
                                                                                  FINISH_EV,
                                                                                  IMU_PORT,
+                                                                                 CONFIG,
                                                                                  measurement_name,
                                                                                  experiment_log,))]
             [proc.start() for proc in TCP_PROCS]
@@ -163,11 +164,12 @@ def quit():
         sys.exit(0)
 
 
-def portal(imu_port: int, api_port: int = 5050):
+def portal(imu_port: int, config: BrokerConfig, api_port: int = 5050):
     # Recording parameters
-    global CAMERA_INFO, CAMERA_GROUP, IMU_PORT
+    global IMU_PORT, CONFIG
 
     IMU_PORT = imu_port
+    CONFIG = config
 
     # setting global parameters
     logging.basicConfig(level=logging.INFO)
@@ -184,4 +186,4 @@ def portal(imu_port: int, api_port: int = 5050):
 
 
 if __name__ == '__main__':
-    portal(18888, 5050)
+    portal(18888, BrokerConfig('./config.json'), 5050)
