@@ -21,6 +21,8 @@ if __name__ == '__main__':
         time.sleep(0.5)
     
     logging.info(f"Processes: {process_list}")
+    for process in process_list:
+        print(process)
     
     try:
         while True:

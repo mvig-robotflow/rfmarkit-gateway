@@ -6,13 +6,19 @@ import uuid
 import random
 
 ID = str(uuid.uuid1())[:12]
-{"id":"84f7033b3e78","timestamp":1634821243683675,}
+# {"id":"84f7033b3e78","timestamp":1634821243683675,}
 
-HOST: str = "localhost"
+HOST: str = "127.0.0.1"
 IMU_PORT: int = 18888
 if __name__ == '__main__':
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_sock.connect((HOST, IMU_PORT))
+    while True:
+        try:
+            client_sock.connect((HOST, IMU_PORT))
+            break
+        except Exception:
+            continue
+
     try:
         while True:
             time.sleep(0.01)
@@ -23,3 +29,4 @@ if __name__ == '__main__':
             client_sock.send(bytes(DUMMY_MSG, encoding='ascii'))
     except KeyboardInterrupt:
         client_sock.close()
+
