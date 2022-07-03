@@ -25,7 +25,7 @@ def tcp_send_bytes(arguments):
         if isinstance(err, socket.timeout) or isinstance(err, ConnectionRefusedError):
             return {"addr": addr, "msg": reply}
         else:
-            logging.warning(f"{err} for {addr}")
+            logging.debug(f"{err} for {addr}")
             return {"addr": addr, "msg": reply}
 
     try:

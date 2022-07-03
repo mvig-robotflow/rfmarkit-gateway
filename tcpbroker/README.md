@@ -32,7 +32,7 @@ Welcome to Inertial Measurement Unit Data collecting system
 
 输入`start/s`然后回车即可开始检测。这时候启动传感器，传感器的IP地址会出现在屏幕上。
 
-```
+```text
 Starting measurement: imu_mem_2021-10-29_212204
 INFO:root:Binding address 0.0.0.0:18888
 INFO:root:New client 10.52.24.251:58921

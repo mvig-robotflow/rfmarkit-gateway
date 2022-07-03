@@ -73,7 +73,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=18888)
-    parser.add_argument('-p', action="store_true")
+    parser.add_argument('-P', action="store_true")
     parser.add_argument('--config', type=str, default='./config.json')
     args = parser.parse_args()
 
