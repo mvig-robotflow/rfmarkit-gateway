@@ -45,7 +45,13 @@ def measure_headless(measure_stop_ev: mp.Event(),
     client_addr_queue = mp.Queue()
 
     tcp_listen_task_process = mp.Process(None, tcp_listen_task, "tcp_listen_task",
-                                         ('0.0.0.0', port, config, measurement_name, stop_ev, finish_ev, client_addr_queue,))
+                                         ('0.0.0.0', 
+                                          port, 
+                                          config, 
+                                          measurement_name, 
+                                          stop_ev, 
+                                          finish_ev, 
+                                          client_addr_queue,))
     tcp_listen_task_process.start()
 
     measure_stop_ev.wait()
@@ -99,7 +105,7 @@ def start_record():
 
         # Get measurement name
         try:
-            measurement_name = request.get_json()["subpath"]  # extract measurement name
+            measurement_name = request.get_json()["tag"]  # extract measurement name
             logging.info(f"[tcpbroker] measurement_name={measurement_name}")
         except Exception:
             measurement_name = measurement_name = 'imu_mem_' + datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -164,7 +170,7 @@ def quit():
         sys.exit(0)
 
 
-def portal(imu_port: int, config: BrokerConfig, api_port: int = 5050):
+def portal(imu_port: int, config: BrokerConfig, api_port: int = 18889):
     # Recording parameters
     global IMU_PORT, CONFIG
 
@@ -186,4 +192,4 @@ def portal(imu_port: int, config: BrokerConfig, api_port: int = 5050):
 
 
 if __name__ == '__main__':
-    portal(18888, BrokerConfig('./config.json'), 5050)
+    portal(18888, BrokerConfig('./config.json'), 18889)
