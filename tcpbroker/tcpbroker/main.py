@@ -26,7 +26,7 @@ def main(args):
     print("Welcome to Inertial Measurement Unit Data collecting system \n\n")
     print_help()
     port = args.port
-    if args.p:
+    if args.P:
         portal(port, config, config.API_PORT)
         exit(0)
 
