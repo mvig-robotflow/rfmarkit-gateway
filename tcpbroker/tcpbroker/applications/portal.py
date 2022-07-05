@@ -133,7 +133,7 @@ def stop_record():
     global TCP_PROCS, STOP_EV
     logging.info("[tcpbroker] Stop")
 
-    if len(TCP_PROCS) > 0:
+    if len(TCP_PROCS) and any([proc.is_alive() for proc in TCP_PROCS]) > 0:
         STOP_EV.set()
         return make_response(status=200, msg=f"STOP OK: {len([None for proc in TCP_PROCS if proc.is_alive()])} procs are running")
     else:
@@ -145,7 +145,7 @@ def kill_record():
     global TCP_PROCS, STOP_EV, FINISH_EV
     logging.info("[tcpbroker] kill")
 
-    if len(TCP_PROCS) > 0:
+    if len(TCP_PROCS) and any([proc.is_alive() for proc in TCP_PROCS]) > 0:
         STOP_EV.set()
         FINISH_EV.wait()
         [proc.join(timeout=3) for proc in TCP_PROCS]
@@ -163,7 +163,7 @@ def quit():
     global TCP_PROCS, STOP_EV, FINISH_EV
     logging.info("[tcpbroker] quit")
 
-    if len(TCP_PROCS) > 0:
+    if len(TCP_PROCS) and any([proc.is_alive() for proc in TCP_PROCS]) > 0:
         kill_record()
         sys.exit(1)
     else:
