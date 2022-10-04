@@ -123,7 +123,7 @@ def control(port: int, config: BrokerConfig, client_queue: mp.Queue = None):
             logging.info("Wrong input, use default value(192.168.1.0)")
             subnet = [192, 168, 1, 0]
 
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             print("Control Exiting")
             return
 
@@ -154,7 +154,7 @@ def control(port: int, config: BrokerConfig, client_queue: mp.Queue = None):
             broadcast_command(subnet, port, command, client_addrs)
 
             # print_help()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("Control Exiting")
         return
 

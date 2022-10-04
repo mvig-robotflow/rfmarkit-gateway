@@ -4,13 +4,14 @@ import os
 from datetime import datetime
 
 from cvt_measurement import convert_measurement
-from tcpbroker.applications import measure, control, test, portal
+from tcpbroker.applications import measure, control, test, portal, easy_setup
 
 
 def print_help():
     print("\
  Usage: \n\
     > start [measurement_name] - start measurement\n\
+    > easy_setup - begin easy_setup program\n\
     > control - begin control program\n\
     > test    - begin test program\n\
     > portal  - enter portal mode\n\
@@ -30,10 +31,15 @@ def main(args):
         portal(port, config, config.API_PORT)
         exit(0)
 
+    if args.easy:
+        easy_setup(port, config, config.API_PORT)
+        exit(0)
+
     while True:
         try:
             cmd = input("> ").split(' ')
-        except KeyboardInterrupt:
+
+        except (KeyboardInterrupt, EOFError):
             logging.info("Exiting")
             return
 
@@ -54,7 +60,9 @@ def main(args):
         elif cmd[0] in ['control', 'c']:
             control(port, config)
             print(f"Starting control app")
-
+        elif cmd[0] in ['easy_setup', 'e']:
+            easy_setup(port, config)
+            print(f"Starting control app")
         elif cmd[0] in ['test', 't']:
             test('0.0.0.0', port)
         elif cmd[0] in ['portal', 'p']:
@@ -74,6 +82,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=18888)
     parser.add_argument('-P', action="store_true")
+    parser.add_argument('--easy', action="store_true")
     parser.add_argument('--config', type=str, default='./config.json')
     args = parser.parse_args()
 
