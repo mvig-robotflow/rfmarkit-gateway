@@ -2,6 +2,8 @@
 *.dat
 *.pyc
 *.whl
+*.egg-info
+*.log
 
 */imu_data
 tools/data
@@ -14,3 +16,6 @@ ota/*
 /cvt_measurement/build/
 /cvt_measurement/cvt_measurement.egg-info/
 /cvt_measurement/dist/
+
+/tcpbroker/build/
+/tcpbroker/dist/

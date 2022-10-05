@@ -23,7 +23,7 @@ def main(args):
     config = BrokerConfig(args.config)
 
     logging.basicConfig(level=logging.DEBUG) if config.DEBUG else logging.basicConfig(level=logging.INFO)
-
+    logging.debug(f"Recording to {config.DATA_DIR}")
     print("Welcome to Inertial Measurement Unit Data collecting system \n\n")
     print_help()
     port = args.port

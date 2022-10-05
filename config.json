@@ -1,8 +1,7 @@
 {
   "default_subnet": "10.53.24.0",
   "n_procs": 4,
-  "data_dir": "./imu_data",
+  "imu_data_dir": "./imu_data",
   "tcp_buff_sz": 1024,
-  "api_port": 5051,
-  "save_path_base": "C:\\Users\\liyutong\\Data\\imu-highspeed-cam"
+  "api_port": 18889
 }
