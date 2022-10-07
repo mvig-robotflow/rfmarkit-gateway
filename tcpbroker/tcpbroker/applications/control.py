@@ -78,18 +78,21 @@ def probe(subnet: List[int], port: int, client_addrs: Union[set, None]) -> set:
     return res
 
 
-def broadcast_command(subnet: List[int], port: int, command: str, client_addrs: Union[set, None]):
+def broadcast_command(subnet: List[int], port: int, command: str, client_addrs: Union[set, None], verbose: bool=True):
     # loop = asyncio.get_event_loop()
     # send_tasks = [asyncio.ensure_future(tcp_send_bytes(arguments)) for arguments in gen_arguments(subnet, port, command, client_addrs)]
     # loop.run_until_complete(asyncio.wait(send_tasks))
+    results = []
     with ThreadPoolExecutor(256) as executor:
         if client_addrs is not None:
-            print(f"Sending to: {client_addrs}")
+            logging.info(f"Sending to: {client_addrs}")
         for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command, client_addrs)):
             if len(ret['msg']) > 0:
                 res_no_crlf = ret['msg'].split('\n')[0]
-                print(f"{(ret['addr'])} return: {res_no_crlf}")
-
+                if verbose:
+                    print(f"{(ret['addr'])} return: {res_no_crlf}")
+                results.append({'addr': ret['addr'],'res': res_no_crlf})
+    return results
 
 def print_help():
     print("\
