@@ -36,7 +36,7 @@ def vectorize_to_np(record_list: List[Dict[str, Any]], keys: List[str]) -> Dict[
 
 def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> Dict[str, Dict[str, np.ndarray]]:
     MEASUREMENT_KEYS: List[str] = [
-        'id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'mag_x', 'mag_y', 'mag_z', 'pitch', 'roll', 'yaw', "start_timestamp", "uart_buffer_len"
+        'id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'mag_x', 'mag_y', 'mag_z', 'quat_w', 'quat_x', 'quat_y', 'quat_z', 'pitch', 'roll', 'yaw', "start_timestamp", "uart_buffer_len"
     ]
 
     filenames_list: List[str] = glob.glob(os.path.join(measurement_basedir, '*.dat'))

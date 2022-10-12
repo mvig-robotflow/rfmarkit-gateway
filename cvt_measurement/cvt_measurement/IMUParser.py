@@ -79,7 +79,7 @@ class IMUParser:
 
                 imu_dict: dict = {"accel_x": imu_data[1], "accel_y": imu_data[2], "accel_z": imu_data[3], "gyro_x": imu_data[4], "gyro_y": imu_data[5], "gyro_z": imu_data[6],
                                   "roll": imu_data[10],
-                                  "pitch": imu_data[11], "yaw": imu_data[12], "temp": 0.0, "mag_x": imu_data[7], "mag_y": imu_data[8], "mag_z": imu_data[9]}
+                                  "pitch": imu_data[11], "yaw": imu_data[12], "quat_w": imu_data[13], "quat_x": imu_data[14], "quat_y": imu_data[15], "quat_z": imu_data[16], "temp": 0.0, "mag_x": imu_data[7], "mag_y": imu_data[8], "mag_z": imu_data[9]}
 
                 meta_dict = {'timestamp': meta_data[0],
                              'id': ''.join([chr(meta_data[1][idx]) for idx in range(len(meta_data[1]))]),
