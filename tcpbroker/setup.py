@@ -11,7 +11,7 @@ setup(
     author="davidliyutong",
     author_email="davidliyutong@sjtu.edu.cn",
     description="IMU message broker",
-    packages=["tcpbroker", "tcpbroker.applications", "tcpbroker.tasks"],
+    packages=["tcpbroker", "tcpbroker.applications", "tcpbroker.tasks", "tcpbroker.common"],
     python_requires=">=3.6",
     install_requires=requirements,
     entrypoints={
