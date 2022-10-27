@@ -7,7 +7,7 @@ import time
 from typing import Any, Dict, BinaryIO, List, Tuple
 
 from tcpbroker.config import BrokerConfig
-from tcpbroker.common import ClientRegistry
+from tcpbroker.common import ClientLiveRegistry
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,15 +24,16 @@ def insert_data(f: BinaryIO, data: bytes):
     f.write(data)
 
 
-def tcp_process_task(client_socket_queue: mp.Queue, config: BrokerConfig, measurement_basedir: str, proc_id: int, stop_ev: mp.Event):
-    registration = ClientRegistry(measurement_basedir, proc_id)
+def tcp_process_live_task(client_socket_queue: mp.Queue, config: BrokerConfig, measurement_basedir: str, proc_id: int, stop_ev: mp.Event, out_queue: mp.Queue):
+    registration = ClientLiveRegistry(measurement_basedir, proc_id)
     recv_size = config.TCP_BUFF_SZ
 
     try:
         while True:
             if not client_socket_queue.empty():
                 new_client: Dict[str: Any] = client_socket_queue.get()
-                registration.register(new_client["socket"], new_client["addr"], new_client["port"])
+                registration.register(new_client["socket"], new_client["addr"], new_client["port"], out_queue)
+
 
             if len(registration) > 0:
                 client_read_ready_fds, _, _ = select.select(registration.fds, [], [], 1)
@@ -52,7 +53,7 @@ def tcp_process_task(client_socket_queue: mp.Queue, config: BrokerConfig, measur
                     if not registration.ids[fd]['transmitted']:
                         registration.mark_as_online(fd)
 
-                    insert_data(registration.handles[fd], data)
+                    registration.renders[fd].update(data)
 
             if stop_ev.is_set():
                 logging.debug("Classing sockets")

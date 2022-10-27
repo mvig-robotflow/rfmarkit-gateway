@@ -7,7 +7,7 @@ requirements = [
 
 setup(
     name="tcpbroker",
-    version="1.2",
+    version="1.3",
     author="davidliyutong",
     author_email="davidliyutong@sjtu.edu.cn",
     description="IMU message broker",

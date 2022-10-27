@@ -7,7 +7,7 @@ requirements = [
 
 setup(
     name="cvt_measurement",
-    version="1.0",
+    version="1.3",
     author="davidliyutong",
     author_email="davidliyutong@sjtu.edu.cn",
     description="Toolkit to convert IMU measurement",

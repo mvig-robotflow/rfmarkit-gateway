@@ -9,16 +9,17 @@ from typing import List, Dict, Optional, Union, Any
 import tqdm
 
 from tcpbroker.config import BrokerConfig
-from .tcp_process import tcp_process_task
+from .tcp_process_live import tcp_process_live_task
 
 
-def tcp_listen_task(address: str,
+def tcp_listen_live_task(address: str,
                     port: int,
                     config: BrokerConfig,
                     measurement_name: str,
                     stop_ev: mp.Event,
                     finish_ev: mp.Event,
                     client_addr_queue: mp.Queue = None,
+                    out_queue: mp.Queue = None,
                     ) -> None:
     # Create client listeners
 
@@ -31,13 +32,14 @@ def tcp_listen_task(address: str,
 
     client_procs: List[mp.Process] = [
         mp.Process(None,
-                   tcp_process_task,
+                   tcp_process_live_task,
                    f"tcp_process_{i}", (
                        client_queues[i],
                        config,
                        measurement_basedir,
                        i,
                        stop_ev,
+                       out_queue
                    ),
                    daemon=False) for i in range(config.N_PROCS)
     ]

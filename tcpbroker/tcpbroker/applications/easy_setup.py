@@ -16,7 +16,7 @@ def print_help():
     \n\n")
 
 
-def easy_setup(port: int, config: BrokerConfig, client_queue: mp.Queue = None):
+def easy_setup(port: int, config: BrokerConfig):
     # Get subnet, like [10,52,24,0]
     subnet = list(map(lambda x: int(x), config.DEFAULT_SUBNET.split("."))) if config.DEFAULT_SUBNET is not None else None
     if subnet is None:
@@ -30,11 +30,6 @@ def easy_setup(port: int, config: BrokerConfig, client_queue: mp.Queue = None):
         except (KeyboardInterrupt, EOFError):
             print("Control Exiting")
             return
-
-    if client_queue is not None:
-        client_addrs: Union[None, set] = set([])
-    else:
-        client_addrs = None
 
     print(f"欢迎使用IMU控制系统，\n\n 发送到{subnet}\n")
 

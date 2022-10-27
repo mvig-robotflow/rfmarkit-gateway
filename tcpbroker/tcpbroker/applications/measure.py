@@ -29,16 +29,6 @@ def measure(port: int, config: BrokerConfig, measurement_name: str, with_control
             except KeyboardInterrupt:
                 break
     stop_ev.set()
-
-    # try:
-    #     os.kill(tcp_listen_task_process.pid, signal.SIGTERM)
-    #     print("Joining listen tasks")
-    #     tcp_listen_task_process.join()
-    # except KeyboardInterrupt:
-    #     time.sleep(0.1)
-    #     os.kill(tcp_listen_task_process.pid, signal.SIGTERM)
-    #     tcp_listen_task_process.join()
-
     finish_ev.wait()
 
     # Write readme

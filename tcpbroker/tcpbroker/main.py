@@ -4,13 +4,14 @@ import os
 from datetime import datetime
 
 from cvt_measurement import convert_measurement
-from tcpbroker.applications import measure, control, test, portal, easy_setup
+from tcpbroker.applications import measure, measure_live, control, test, portal, easy_setup
 
 
 def print_help():
     print("\
  Usage: \n\
     > start [measurement_name] - start measurement\n\
+    > start_live [measurement_name] - start live measurement\n\
     > easy_setup - begin easy_setup program\n\
     > control - begin control program\n\
     > test    - begin test program\n\
@@ -32,7 +33,7 @@ def main(args):
         exit(0)
 
     if args.easy:
-        easy_setup(port, config, config.API_PORT)
+        easy_setup(port, config)
         exit(0)
 
     while True:
@@ -56,7 +57,18 @@ def main(args):
                 convert_measurement(os.path.join(config.DATA_DIR, measurement_name))
             except Exception as e:
                 logging.warning(e)
-
+        elif cmd[0] in ['start_live']:
+            if len(cmd) > 1:
+                measurement_name = cmd[1]
+            else:
+                measurement_name = 'imu_mem_' + datetime.now().strftime("%Y-%m-%d_%H%M%S")
+            print(f"Starting measurement: {measurement_name}, enter quit/q to stop")
+            measure_live(port, config, measurement_name, False)
+            # Convert
+            try:
+                convert_measurement(os.path.join(config.DATA_DIR, measurement_name))
+            except Exception as e:
+                logging.warning(e)
         elif cmd[0] in ['control', 'c']:
             control(port, config)
             print(f"Starting control app")
