@@ -34,7 +34,6 @@ def tcp_process_live_task(client_socket_queue: mp.Queue, config: BrokerConfig, m
                 new_client: Dict[str: Any] = client_socket_queue.get()
                 registration.register(new_client["socket"], new_client["addr"], new_client["port"], out_queue)
 
-
             if len(registration) > 0:
                 client_read_ready_fds, _, _ = select.select(registration.fds, [], [], 1)
                 for fd in client_read_ready_fds:
@@ -56,7 +55,7 @@ def tcp_process_live_task(client_socket_queue: mp.Queue, config: BrokerConfig, m
                     registration.renders[fd].update(data)
 
             if stop_ev.is_set():
-                logging.debug("Classing sockets")
+                logging.debug("closing sockets")
                 registration.close()
                 return
 

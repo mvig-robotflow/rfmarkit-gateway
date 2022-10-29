@@ -88,13 +88,13 @@ def tcp_listen_task(address: str,
             else:
                 time.sleep(0.01)
     except KeyboardInterrupt:
-        logging.info("Main process capture keyboard interrupt")
+        logging.info("main process tcp_listen capture keyboard interrupt")
 
-    logging.info("Joining all processes")
+    logging.info("joining all processes")
     for proc in client_procs:
         logging.debug(f"Joining {proc}")
         proc.join()
 
     server_socket.close()
     finish_ev.set()
-    logging.debug(f"All processes are joined")
+    logging.debug(f"all processes are joined")

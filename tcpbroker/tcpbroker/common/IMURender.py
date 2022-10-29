@@ -1,3 +1,4 @@
+import logging
 import multiprocessing as mp
 import struct
 import time
@@ -86,7 +87,7 @@ class IMURender:
                 self.stat_is_valid = True
                 self.stat = res[-1]
                 # Communicate
-                self.out_queue.put(self.stat)
+                self.out_queue.put(self.stat, timeout=1)
             else:
                 self.stat_is_valid = False
 
@@ -102,6 +103,7 @@ class IMURender:
 # - Captured IMU.addr e5, Not Synced
 # - %
 if __name__ == '__main__':
+    logging.info('start')
     imu_data = open(
         r"C:\Users\liyutong\Desktop\rfimu-articulated-kit\imu_data\imu_mem_2022-10-25_233757\process_0_368.dat",
         "rb").read()

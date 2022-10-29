@@ -55,7 +55,7 @@ def tcp_process_task(client_socket_queue: mp.Queue, config: BrokerConfig, measur
                     insert_data(registration.handles[fd], data)
 
             if stop_ev.is_set():
-                logging.debug("Classing sockets")
+                logging.debug("closing sockets")
                 registration.close()
                 return
 
