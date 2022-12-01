@@ -2,6 +2,7 @@ import argparse
 import cmd
 import logging
 import multiprocessing as mp
+import os.path
 import os.path as osp
 from datetime import datetime
 from typing import Optional
@@ -90,27 +91,32 @@ class IMUConsole(cmd.Cmd):
 
 
 def main(args):
-    config = BrokerConfig(args.config)
-    logging.basicConfig(level=logging.DEBUG) if config.debug else logging.basicConfig(level=logging.INFO)
+    if os.path.exists(args.config):
+        option = BrokerConfig(args.config)
+    else:
+        logging.error(f"Config file {args.config} not found")
+        exit(1)
+
+    logging.basicConfig(level=logging.DEBUG) if option.debug else logging.basicConfig(level=logging.INFO)
 
     logger = logging.getLogger('tcpbroker')
-    logger.setLevel(logging.DEBUG) if config.debug else logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG) if option.debug else logger.setLevel(logging.INFO)
 
     if args.P:
-        portal(config)
+        portal(option)
         exit(0)
     elif args.easy:
-        easy_setup(config)
+        easy_setup(option)
         exit(0)
     else:
-        IMUConsole(config).cmdloop()
+        IMUConsole(option).cmdloop()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-P', action="store_true")
-    parser.add_argument('--easy', action="store_true")
-    parser.add_argument('--config', type=str, default='./imu_config.yaml')
+    parser.add_argument('-P', action="store_true", help="portal mode")
+    parser.add_argument('--easy', action="store_true", help="start easy setup")
+    parser.add_argument('--config', type=str, default='./imu_config.yaml', help="path to config file")
     args = parser.parse_args()
 
     main(args)

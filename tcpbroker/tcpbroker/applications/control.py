@@ -30,13 +30,16 @@ Commands: \n\
 
 def control_from_keyboard(config: BrokerConfig,
                           client_info_queue: mp.Queue = None):
+    # FIXME: Refactor this function to a cmd.Cmd based command line tool
+    # FIXME: Track latest firmware version and update the command list
     imu_addresses = parse_cidr_addresses(config.imu_addresses)
+
     imu_port = config.imu_port
 
     console = Console()
 
     console.print(f"Welcome to Inertial Measurement Unit control system \n\n IMUs: \n")
-    console.print(imu_addresses)
+    console.print(config.imu_addresses, imu_addresses)
     print_help()
 
     online_imus = set()

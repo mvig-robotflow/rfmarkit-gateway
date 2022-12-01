@@ -24,7 +24,7 @@ def main(args: argparse.Namespace):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", "-i", type=str, default=None)
-    parser.add_argument("--output", "-o", type=str, default="imu_config.yaml")
+    parser.add_argument("--input", "-i", type=str, default=None, help="path to input config file")
+    parser.add_argument("--output", "-o", type=str, default="imu_config.yaml", help="path to output config file")
     args = parser.parse_args()
     main(args)

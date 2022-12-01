@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import yaml
 from typing import Dict, Any, List
 
-from py_cli_interaction import must_parse_cli_int, must_parse_cli_string, must_parse_cli_bool
+from py_cli_interaction import must_parse_cli_int, must_parse_cli_string, must_parse_cli_bool, must_parse_cli_float
 
 
 class BrokerConfig:
@@ -31,7 +31,7 @@ class BrokerConfig:
     update_interval_s: float = __DEFAULT_UPDATE_INTERVAL_S__
     debug: bool = __DEFAULT_DEBUG__
 
-    imu_addresses: List[str] = None
+    imu_addresses: List[str] = []
 
     def __init__(self, path_to_yaml_file: str = None):
         if path_to_yaml_file is not None:

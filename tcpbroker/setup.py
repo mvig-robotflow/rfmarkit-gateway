@@ -1,9 +1,8 @@
 from setuptools import setup
+import os
 
-requirements = [
-    'flask',
-    'gevent',
-]
+requires = open("./requirements.txt","r").readlines() if os.path.exists("./requirements.txt") else open("./tcpbroker.egg-info/requires.txt","r").readlines()
+
 
 setup(
     name="tcpbroker",
@@ -18,8 +17,8 @@ setup(
         "tcpbroker.common",
         "tcpbroker.scripts",
     ],
-    python_requires=">=3.6",
-    install_requires=requirements,
+    python_requires=">=3.7",
+    install_requires=requires,
     entrypoints={
         'console_scripts': [
             'tcpbroker = tcpbrocker.main:main'
