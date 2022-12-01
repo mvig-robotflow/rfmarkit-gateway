@@ -1,12 +1,12 @@
-from setuptools import setup
 import os
 
-requires = open("./requirements.txt","r").readlines() if os.path.exists("./requirements.txt") else open("./tcpbroker.egg-info/requires.txt","r").readlines()
+from setuptools import setup
 
+requires = open("./requirements.txt", "r").readlines() if os.path.exists("./requirements.txt") else open("./tcpbroker.egg-info/requires.txt", "r").readlines()
 
 setup(
     name="tcpbroker",
-    version="1.3",
+    version="1.4",
     author="davidliyutong",
     author_email="davidliyutong@sjtu.edu.cn",
     description="IMU message broker",

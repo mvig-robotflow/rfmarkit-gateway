@@ -1,17 +1,16 @@
+import os
+
 from setuptools import setup
 
-requirements = [
-    'numpy',
-    'tqdm',
-]
+requires = open("./requirements.txt", "r").readlines() if os.path.exists("./requirements.txt") else open("./tcpbroker.egg-info/requires.txt", "r").readlines()
 
 setup(
     name="cvt_measurement",
-    version="1.4",
+    version="1.5",
     author="davidliyutong",
     author_email="davidliyutong@sjtu.edu.cn",
     description="Toolkit to convert IMU measurement",
     packages=["cvt_measurement", "cvt_measurement.common", "cvt_measurement.functional"],
-    python_requires=">=3.6",
-    install_requires=requirements
+    python_requires=">=3.7",
+    install_requires=requires
 )
