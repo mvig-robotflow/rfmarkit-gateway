@@ -6,7 +6,7 @@ A tool for converting measurement data from IMU.
 
 ```shell
 git clone https://github.com/mvig-robotflow/rfimu-interface
-cd cvt_measurement
+cd rfimu-interface/cvt_measurement
 python setup.py develop
 ```
 

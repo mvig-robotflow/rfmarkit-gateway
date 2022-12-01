@@ -8,7 +8,7 @@
 
 ```shell
 git clone https://github.com/mvig-robotflow/rfimu-interface
-cd tcpbroker
+cd rfimu-interface/tcpbroker
 python setup.py develop
 ```
 ## 如何使用
