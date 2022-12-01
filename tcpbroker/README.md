@@ -1,4 +1,4 @@
-# 如何使用 `tcpbroker`
+# tcpbroker
 
 ## 简介
 
@@ -7,7 +7,7 @@
 ## 安装
 
 ```shell
-git clone https://github.com/mvig-robotflow/rfimu-interface.git
+git clone https://github.com/mvig-robotflow/rfimu-interface
 cd tcpbroker
 python setup.py develop
 ```
