@@ -102,7 +102,7 @@ class IMUParser:
     def __call__(self, f: BinaryIO) -> List[Dict[str, float]]:
         read_buf = f.read()
         if len(read_buf) <= 0:
-            logging.warning("Empty recording")
+            logging.warning("empty recording")
             return []
         fmt = self._sync(read_buf)
         result = self._parse(read_buf, fmt)
