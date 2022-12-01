@@ -1,88 +1,70 @@
-import json
 import logging
 import multiprocessing as mp
 import os
+import os.path as osp
 import signal
-import sys
 import time
-from datetime import datetime
-from typing import List
+from typing import List, Optional
 
-from flask import Flask, request, Response
-from gevent import pywsgi
+import uvicorn
+from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from cvt_measurement import convert_measurement
 from tcpbroker.config import BrokerConfig
-from tcpbroker.tasks import tcp_listen_task
+from tcpbroker.tasks import measure
+from tcpbroker.utils import get_datetime_tag
 
-app = Flask(__name__)
+app = FastAPI()
 
 STOP_EV: mp.Event = mp.Event()
 FINISH_EV: mp.Event = mp.Event()
 TCP_PROCS: List[mp.Process] = []
-IMU_PORT: int = 0
-CONFIG: BrokerConfig = BrokerConfig('./config.json')
+CONFIG: Optional[BrokerConfig] = None
+LOGGER: Optional[logging.Logger] = None
 
 
-def make_response(status, msg="", **kwargs):
-    data = {'status': status, 'msg': msg, 'timestamp': time.time()}
+def make_response(status_code, **kwargs):
+    data = {'code': status_code, 'timestamp': time.time()}
     data.update(**kwargs)
-    resp = Response(mimetype='application/json', status=200)
-    resp.data = json.dumps(data)
+    json_compatible_data = jsonable_encoder(data)
+    resp = JSONResponse(content=json_compatible_data, status_code=status_code)
     return resp
 
 
-def measure_headless(measure_stop_ev: mp.Event(),
-                     measure_finish_ev: mp.Event(),
-                     port: int,
-                     config: BrokerConfig,
-                     measurement_name: str,
-                     experiment_log: str):
-    stop_ev = mp.Event()
-    finish_ev = mp.Event()
+def measure_and_convert(
+        cfg: BrokerConfig,
+        tag: str,
+        signal_stop: mp.Event = None,
+        signal_finish: mp.Event = None,
+        client_info_queue: mp.Queue = None,
+        imu_stat_queue: mp.Queue = None
+):
+    global LOGGER
+    measure(cfg, tag, signal_stop, client_info_queue, imu_stat_queue)
 
-    # Listen TCP
-    client_addr_queue = mp.Queue()
-
-    tcp_listen_task_process = mp.Process(None, tcp_listen_task, "tcp_listen_task",
-                                         ('0.0.0.0', 
-                                          port, 
-                                          config, 
-                                          measurement_name, 
-                                          stop_ev, 
-                                          finish_ev, 
-                                          client_addr_queue,))
-    tcp_listen_task_process.start()
-
-    measure_stop_ev.wait()
-    stop_ev.set()
-    finish_ev.wait()
-
-    # Write readme
-    measurement_basedir = os.path.join(config.DATA_DIR, measurement_name)
-    logging.info(f"[tcpbroker] Writting README to {measurement_basedir}")
-
-    with open(os.path.join(measurement_basedir, 'README'), 'w') as f:
-        f.write(measurement_name + '\n')
-        f.write(experiment_log + '\n')
-
-    # Convert
     try:
-        convert_measurement(os.path.join(config.DATA_DIR, measurement_name))
+        convert_measurement(osp.join(cfg.base_dir, tag))
     except Exception as e:
-        logging.warning(f"[cvt_measurement] {e}")
+        LOGGER.error(e)
 
-    measure_finish_ev.set()
-
-
-@app.route("/", methods=['POST', 'GET'])
-def index():
-    return make_response(status=200, msg=f"ActiveProcesses={len([None for proc in TCP_PROCS if proc.is_alive()])}")
+    signal_finish.set()
 
 
-@app.route("/start", methods=['POST', 'GET'])
-def start_record():
-    global TCP_PROCS, STOP_EV, FINISH_EV, IMU_PORT, CONFIG
+@app.get("/")
+def root():
+    return RedirectResponse(url='/docs')
+
+
+@app.get("/v1/status")
+def status():
+    return make_response(status_code=200, active_processes=[proc.is_alive() for proc in TCP_PROCS].count(True))
+
+
+@app.post("/v1/start")
+def start_process(tag: str = None, experiment_log: str = None):
+    global TCP_PROCS, STOP_EV, FINISH_EV, CONFIG, LOGGER
 
     # Wait until last capture ends
     if len(TCP_PROCS) > 0:
@@ -91,105 +73,102 @@ def start_record():
             if FINISH_EV.is_set():
                 [proc.join(timeout=3) for proc in TCP_PROCS]
                 if any([proc.is_alive() for proc in TCP_PROCS]):
-                    logging.warning("[Solocam] Join timeout")
+                    LOGGER.warning(" Join timeout")
                     [os.kill(proc.pid, signal.SIGTERM) for proc in TCP_PROCS if proc.is_alive()]
                 TCP_PROCS = []
             else:
-                return make_response(status=500, msg="NOT FINISHED")
+                return make_response(status_code=500, msg="NOT FINISHED")
         else:
-            return make_response(status=500, msg="RUNNING")
+            return make_response(status_code=500, msg="RUNNING")
 
     if len(TCP_PROCS) == 0:
         STOP_EV.clear()
         FINISH_EV.clear()
 
         # Get measurement name
-        try:
-            measurement_name = request.get_json()["tag"]  # extract measurement name
-            logging.info(f"[tcpbroker] measurement_name={measurement_name}")
-        except Exception:
-            measurement_name = measurement_name = 'imu_mem_' + datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        if tag is None:
+            tag = 'imu_mem_' + get_datetime_tag()
+        LOGGER.info(f"tag={tag}")
 
-        try:
-            experiment_log = request.get_json()["experiment_log"]  # extract log
-            logging.info(f"[tcpbroker] experiment_log={experiment_log}")
-        except Exception:
+        if experiment_log is None:
             experiment_log = 'None'
+        LOGGER.info(f"experiment_log={experiment_log}")
+
+        client_info_queue = mp.Queue()
+        imu_stat_queue = mp.Queue()
 
         if len(TCP_PROCS) <= 0:
-            TCP_PROCS = [mp.Process(None, measure_headless, "measure_headless", (STOP_EV,
-                                                                                 FINISH_EV,
-                                                                                 IMU_PORT,
-                                                                                 CONFIG,
-                                                                                 measurement_name,
-                                                                                 experiment_log,))]
+            TCP_PROCS = [
+                mp.Process(
+                    None,
+                    measure_and_convert,
+                    "measure_headless",
+                    (
+                        CONFIG,
+                        tag,
+                        STOP_EV,
+                        FINISH_EV,
+                        client_info_queue,
+                        imu_stat_queue
+                    )
+                )
+            ]
             [proc.start() for proc in TCP_PROCS]
 
-        return make_response(status=200, msg=f"START OK, subpath={measurement_name}")
+        return make_response(status_code=200, msg="START OK", subpath=tag)
 
 
-@app.route("/stop", methods=['POST', 'GET'])
-def stop_record():
-    global TCP_PROCS, STOP_EV
-    logging.info("[tcpbroker] Stop")
+@app.post("/v1/stop")
+def stop_process():
+    global TCP_PROCS, STOP_EV, LOGGER
+    LOGGER.info("stop")
 
-    if len(TCP_PROCS) and any([proc.is_alive() for proc in TCP_PROCS]) > 0:
+    if len(TCP_PROCS) > 0 and any([proc.is_alive() for proc in TCP_PROCS]) > 0:
         STOP_EV.set()
-        return make_response(status=200, msg=f"STOP OK: {len([None for proc in TCP_PROCS if proc.is_alive()])} procs are running")
+        return make_response(status_code=200, msg=f"STOP OK: {len([None for proc in TCP_PROCS if proc.is_alive()])} procs are running")
     else:
-        return make_response(status=500, msg="NOT RUNNING")
+        return make_response(status_code=500, msg="NOT RUNNING")
 
 
-@app.route("/kill", methods=['POST', 'GET'])
+@app.post("/v1/kill")
 def kill_record():
-    global TCP_PROCS, STOP_EV, FINISH_EV
-    logging.info("[tcpbroker] kill")
+    global TCP_PROCS, STOP_EV, FINISH_EV, LOGGER
+    LOGGER.info("killing processes")
 
     if len(TCP_PROCS) and any([proc.is_alive() for proc in TCP_PROCS]) > 0:
         STOP_EV.set()
         FINISH_EV.wait()
-        [proc.join(timeout=3) for proc in TCP_PROCS]
+        [proc.join(timeout=4) for proc in TCP_PROCS]
         if any([proc.is_alive() for proc in TCP_PROCS]):
-            logging.warning("[tcpbroker] Join timeout")
+            LOGGER.warning("join timeout, force kill all processes")
             [os.kill(proc.pid, signal.SIGTERM) for proc in TCP_PROCS if proc.is_alive()]
         TCP_PROCS = []
-        return make_response(status=200, msg="KILL OK")
+        return make_response(status_code=200, msg="KILL OK")
     else:
-        return make_response(status=500, msg="NOT RUNNING")
+        return make_response(status_code=500, msg="NOT RUNNING")
 
 
-@app.route("/quit", methods=['POST', 'GET'])
-def quit():
-    global TCP_PROCS, STOP_EV, FINISH_EV
-    logging.info("[tcpbroker] quit")
-
-    if len(TCP_PROCS) and any([proc.is_alive() for proc in TCP_PROCS]) > 0:
-        kill_record()
-        sys.exit(1)
-    else:
-        sys.exit(0)
-
-
-def portal(imu_port: int, config: BrokerConfig, api_port: int = 18889):
+def portal(cfg: BrokerConfig):
     # Recording parameters
-    global IMU_PORT, CONFIG
+    global IMU_PORT, CONFIG, LOGGER
 
-    IMU_PORT = imu_port
-    CONFIG = config
+    IMU_PORT = cfg.imu_port
+    API_PORT = cfg.api_port
+    CONFIG = cfg
 
     # setting global parameters
     logging.basicConfig(level=logging.INFO)
+    LOGGER = logging.getLogger("tcpbroker.portal")
     # Prepare system
-    logging.info(f"[tcpbroker] Prepare tcpbroker:{IMU_PORT} at {api_port}")
+    LOGGER.info(f"prepare tcpbroker:{IMU_PORT} at {API_PORT}")
 
     try:
         # app.run(host='0.0.0.0', port=api_port)
-        server = pywsgi.WSGIServer(('0.0.0.0', api_port), app)
-        server.serve_forever()
+        uvicorn.run(app=app, port=API_PORT)
     except KeyboardInterrupt:
-        print(f"[tcpbroker]:  Main got KeyboardInterrupt")
+        LOGGER.info(f"portal() got KeyboardInterrupt")
         return
 
 
 if __name__ == '__main__':
-    portal(18888, BrokerConfig('./config.json'), 18889)
+    portal(BrokerConfig('./imu_config.yaml'))

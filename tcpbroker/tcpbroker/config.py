@@ -1,23 +1,82 @@
-import json
 import multiprocessing as mp
-import os
+from dataclasses import dataclass
+import yaml
+from typing import Dict, Any, List
+
+from py_cli_interaction import must_parse_cli_int, must_parse_cli_string, must_parse_cli_bool
 
 
 class BrokerConfig:
-    def __init__(self, configuration_path: str):
+    __DEFAULT_N_PROCS__: int = min(4, mp.cpu_count())
+    __DEFAULT_DATA_DIR__: str = './imu_data'
+    __DEFAULT_TCP_BUFF_SZ__: int = 1024
+    __DEFAULT_API_PORT__: int = 18889
+    __DEFAULT_IMU_PORT__: int = 18888
+    __DEFAULT_DATA_PORT__: int = 18888
+    __DEFAULT_DATA_ADDR__: str = "0.0.0.0"
+    __DEFAULT_ENABLE_GUI__: bool = False
+    __DEFAULT_DEBUG__: bool = False
 
-        if os.path.exists(configuration_path):
-            with open(configuration_path, 'r') as f:
-                try:
-                    CONFIG = json.load(f)
-                except:
-                    CONFIG = None
-        else:
-            CONFIG = None
+    n_procs: int = __DEFAULT_N_PROCS__
+    base_dir: str = __DEFAULT_DATA_DIR__
+    tcp_buff_sz: int = __DEFAULT_TCP_BUFF_SZ__
+    api_port: int = __DEFAULT_API_PORT__
+    imu_port: int = __DEFAULT_IMU_PORT__
+    data_port: int = __DEFAULT_DATA_PORT__
+    data_addr: str = __DEFAULT_DATA_ADDR__
+    enable_gui: bool = __DEFAULT_ENABLE_GUI__
+    debug: bool = __DEFAULT_DEBUG__
 
-        self.DEFAULT_SUBNET = CONFIG['default_subnet'] if CONFIG is not None and "default_subnet" in CONFIG.keys() and isinstance(CONFIG["default_subnet"], str) else None
-        self.N_PROCS = CONFIG['n_procs'] if CONFIG is not None and "n_procs" in CONFIG.keys() and isinstance(CONFIG["n_procs"], int) else min(4, mp.cpu_count())
-        self.DATA_DIR = CONFIG['imu_data_dir'] if CONFIG is not None and "imu_data_dir" in CONFIG.keys() and isinstance(CONFIG["imu_data_dir"], str) else './imu_data'
-        self.TCP_BUFF_SZ = CONFIG['tcp_buff_sz'] if CONFIG is not None and "tcp_buff_sz" in CONFIG.keys() and isinstance(CONFIG["tcp_buff_sz"], int) else 1024
-        self.API_PORT: int = CONFIG['api_port'] if CONFIG is not None and "api_port" in CONFIG.keys() and isinstance(CONFIG["api_port"], int) else 18889
-        self.DEBUG = 'DEBUG' in os.environ.keys()
+    imu_addresses: List[str] = None
+
+    def __init__(self, path_to_yaml_file: str = None):
+        if path_to_yaml_file is not None:
+            with open(path_to_yaml_file) as f:
+                base_cfg_dict = yaml.load(f, Loader=yaml.SafeLoader)
+            self.load_dict(base_cfg_dict['imu'])
+
+    def __repr__(self):
+        return f"<BrokerConfig: data_dir={self.base_dir}, api_port={self.api_port}>"
+
+    def __post_init__(self):
+        if self.imu_addresses is None:
+            self.imu_addresses = []
+
+    def load_dict(self, src: Dict[str, Any]) -> None:
+        self.n_procs = src['n_procs']
+        self.base_dir = src['base_dir']
+        self.tcp_buff_sz = src['tcp_buff_sz']
+        self.api_port: int = src['api_port']
+        self.imu_port: int = src['imu_port']
+        self.data_port: int = src['data_port']
+        self.data_addr: str = src['data_addr']
+        self.enable_gui: bool = src['enable_gui']
+        self.imu_addresses = src['imu_addresses']
+        self.debug = src['debug']
+
+    def get_dict(self) -> Dict[str, Any]:
+        return {
+            'n_procs': self.n_procs,
+            'base_dir': self.base_dir,
+            'tcp_buff_sz': self.tcp_buff_sz,
+            'api_port': self.api_port,
+            'imu_port': self.imu_port,
+            'data_port': self.data_port,
+            'data_addr': self.data_addr,
+            'enable_gui': self.enable_gui,
+            'imu_addresses': self.imu_addresses,
+            'debug': self.debug
+        }
+
+    def configure_from_keyboard(self):
+        self.n_procs = must_parse_cli_int("Number of processes?", min=1, max=13, default_value=self.__DEFAULT_N_PROCS__)
+        self.base_dir = must_parse_cli_string("Data directory?", default_value=self.__DEFAULT_DATA_DIR__)
+        self.tcp_buff_sz = must_parse_cli_int("TCP buffer size?", min=1024, max=10241, default_value=self.__DEFAULT_TCP_BUFF_SZ__)
+        self.api_port = must_parse_cli_int("API port?", min=18889, max=65536, default_value=self.__DEFAULT_API_PORT__)
+        self.imu_port = must_parse_cli_int("IMU port?", default_value=self.__DEFAULT_IMU_PORT__)
+        self.data_port = must_parse_cli_int("Data port?", default_value=self.__DEFAULT_IMU_PORT__)
+        self.data_addr = must_parse_cli_string("Data address?", default_value=self.__DEFAULT_DATA_ADDR__)
+        self.enable_gui = must_parse_cli_bool("Enable GUI?", default_value=False)
+        self.debug = must_parse_cli_bool("Debug?", default_value=False)
+
+

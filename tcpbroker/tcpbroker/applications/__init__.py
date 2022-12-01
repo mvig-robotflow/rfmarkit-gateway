@@ -1,6 +1,4 @@
-from .control import control, broadcast_command
-from .measure import measure
-from .measure_live import measure_live
+from .control import control_from_keyboard
+from ..common.tcp import tcp_broadcast_command
 from .portal import portal
-from .test import test
 from .easy_setup import easy_setup

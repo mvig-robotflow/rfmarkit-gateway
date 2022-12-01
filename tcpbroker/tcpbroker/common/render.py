@@ -13,26 +13,30 @@ class IMURender:
     meta_packet_length = struct.calcsize(dgram_meta_t_fmt)
     imu_addr: bytes = b'\xe5'
     addr_length = 1
-
     packet_length = addr_length + struct.calcsize(ch_imu_data_t_fmt) + struct.calcsize(dgram_meta_t_fmt)
 
-    buffer = BytesIO()
-
-    stat: Optional[Dict] = None
-    stat_is_valid: bool = False
+    buffer: BytesIO = BytesIO()
 
     filename: Optional[str] = None
     file_handle: Optional[BinaryIO] = None
     out_queue: Optional[mp.Queue] = None
+    update_interval_s: Optional[float] = None
+    last_update_time: Optional[float] = None
+
+    stat: Optional[Dict] = None
+    stat_is_valid: bool = False
 
     def __init__(self,
                  filename: str = None,
+                 update_interval_s: float = 1e-2,
                  out_queue: mp.Queue = None):
         self.filename = filename
         if self.filename is not None:
             self.file_handle = open(self.filename, "ab")
 
         self.out_queue = out_queue
+        self.update_interval_s = update_interval_s
+        self.last_update_time = time.time()
 
     def _parse_packet(self, pkt: bytes) -> Dict:
         imu_struct = struct.unpack(self.ch_imu_data_t_fmt,
@@ -81,15 +85,17 @@ class IMURender:
 
     def update(self, data: bytes):
         # If not synced, try to sync
-        if self.out_queue is not None:
-            success, res = self._try_sync(data)
-            if success:
-                self.stat_is_valid = True
-                self.stat = res[-1]
-                # Communicate
-                self.out_queue.put(self.stat, timeout=1)
-            else:
-                self.stat_is_valid = False
+        success, res = self._try_sync(data)
+        if success:
+            self.stat_is_valid = True
+            self.stat = res[-1]
+            # Communicate
+            if self.out_queue is not None:
+                if time.time() - self.last_update_time > self.update_interval_s:
+                    self.out_queue.put(self.stat, timeout=1)
+                    self.last_update_time = time.time()
+        else:
+            self.stat_is_valid = False
 
         # Flush data to disk
         if self.file_handle is not None:

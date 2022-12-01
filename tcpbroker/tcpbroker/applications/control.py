@@ -1,98 +1,11 @@
-import logging
 import multiprocessing as mp
-import socket
-from concurrent.futures import ThreadPoolExecutor
-from typing import List, Union
 
+from rich.console import Console
+
+from tcpbroker.common import tcp_broadcast_command
 from tcpbroker.config import BrokerConfig
+from tcpbroker.utils import parse_cidr_addresses
 
-
-def tcp_send_bytes(arguments):
-    addr: str = arguments['addr']
-    port: int = arguments['port']
-    data: int = arguments['data']
-    reply = ''
-
-    logging.debug(f"Sending {data} to {addr}:{port}")
-
-    # Setup the server
-    ctrl_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # ctrl_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    ctrl_socket.settimeout(2)  # TODO: Magic timeout
-    try:
-        ctrl_socket.connect((addr, port))
-    except Exception as err:
-        if isinstance(err, socket.timeout) or isinstance(err, ConnectionRefusedError):
-            return {"addr": addr, "msg": reply}
-        else:
-            logging.debug(f"{err} for {addr}")
-            return {"addr": addr, "msg": reply}
-
-    try:
-        ctrl_socket.send(data)
-        while True:
-            reply += str(ctrl_socket.recv(1024), encoding='ascii')
-    except socket.timeout:
-        # logging.warning(f"Socket timeout for {addr}")
-        pass
-
-    return {"addr": addr, "msg": reply}
-
-
-def gen_arguments(subnet: List[int], port: int, command: str,
-                  client_addrs: set = None):
-    # FIXME: Only support *.*.*.0/24
-    data = bytes(command, encoding='ascii')
-
-    if client_addrs is None:
-        postfix = int(subnet[-1])
-        while postfix < 256:
-            yield {'addr': ".".join(map(lambda x: str(x), subnet[:3])) + '.' + str(postfix), 'port': port, 'data': data}
-            postfix += 1
-    else:
-        for addr in client_addrs:
-            yield {'addr': addr, 'port': port, 'data': data}
-
-
-def probe(subnet: List[int], port: int, client_addrs: Union[set, None]) -> set:
-    """
-    Probe clients using ping
-    Args:
-        subnet:
-        port:
-        client_addrs:
-
-    Returns:
-
-    """
-    res = set()
-    with ThreadPoolExecutor(64) as executor:
-        if client_addrs is not None:
-            print(f"Sending to: {client_addrs}")
-        for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, 'blink_get', client_addrs)):
-            if len(ret['msg']) > 0:
-                res_no_crlf = ret['msg'].split('\n')[0]
-                res.add(ret['addr'])
-                print(f"{(ret['addr'])} return: {res_no_crlf}")
-
-    return res
-
-
-def broadcast_command(subnet: List[int], port: int, command: str, client_addrs: Union[set, None], verbose: bool=True):
-    # loop = asyncio.get_event_loop()
-    # send_tasks = [asyncio.ensure_future(tcp_send_bytes(arguments)) for arguments in gen_arguments(subnet, port, command, client_addrs)]
-    # loop.run_until_complete(asyncio.wait(send_tasks))
-    results = []
-    with ThreadPoolExecutor(256) as executor:
-        if client_addrs is not None:
-            logging.info(f"Sending to: {client_addrs}")
-        for ret in executor.map(tcp_send_bytes, gen_arguments(subnet, port, command, client_addrs)):
-            if len(ret['msg']) > 0:
-                res_no_crlf = ret['msg'].split('\n')[0]
-                if verbose:
-                    print(f"{(ret['addr'])} return: {res_no_crlf}")
-                results.append({'addr': ret['addr'],'res': res_no_crlf})
-    return results
 
 def print_help():
     print("\
@@ -115,52 +28,43 @@ Commands: \n\
     > quit* - quit this tool\n\n")
 
 
-def control(port: int, config: BrokerConfig, client_queue: mp.Queue = None):
-    # Get subnet, like [10,52,24,0]
-    subnet = list(map(lambda x: int(x), config.DEFAULT_SUBNET.split("."))) if config.DEFAULT_SUBNET is not None else None
-    if subnet is None:
-        try:
-            subnet: List[int] = list(
-                map(lambda x: int(x), input("Input subnet of IMUs, e.g. 10.53.24.0\n> ").split(".")))
-        except ValueError:
-            logging.info("Wrong input, use default value(192.168.1.0)")
-            subnet = [192, 168, 1, 0]
+def control_from_keyboard(config: BrokerConfig,
+                          client_info_queue: mp.Queue = None):
+    imu_addresses = parse_cidr_addresses(config.imu_addresses)
+    imu_port = config.imu_port
 
-        except (KeyboardInterrupt, EOFError):
-            print("Control Exiting")
-            return
+    console = Console()
 
-    print(f"Welcome to Inertial Measurement Unit control system \n\n Sending to {subnet}\n")
+    console.print(f"Welcome to Inertial Measurement Unit control system \n\n IMUs: \n")
+    console.print(imu_addresses)
     print_help()
 
-    if client_queue is not None:
-        client_addrs: Union[None, set] = set([])
-    else:
-        client_addrs = None
-
+    online_imus = set()
     try:
         while True:
-            if client_addrs is not None:
-                print(f"Online clients [{len(client_addrs)}] : {client_addrs}")
-            if client_queue is not None:
-                while not client_queue.empty():
-                    client_addrs.add(str(client_queue.get()))
-            command = input("> ")
+            if client_info_queue is not None:
+                while not client_info_queue.empty():
+                    online_imus.add(str(client_info_queue.get()))
+
+            if online_imus is not None:
+                console.print(f"Online clients [{len(online_imus)}] :")
+                console.print(online_imus)
+
+            command = console.input("> ")
             if command == '':
                 continue
             elif command in ['probe', 'p']:
-                client_addrs = probe(subnet, port, None)
+                online_imus = [it['addr'] for it in tcp_broadcast_command(imu_addresses, imu_port, 'id', verbose=False)]
                 continue
             elif command in ['quit', 'q']:
                 break
 
-            broadcast_command(subnet, port, command, client_addrs)
+            tcp_broadcast_command(online_imus, config.imu_port, command)
 
-            # print_help()
     except (KeyboardInterrupt, EOFError):
         print("Control Exiting")
         return
 
 
 if __name__ == '__main__':
-    control(18888, BrokerConfig('./config.json'))
+    control_from_keyboard(BrokerConfig('./config.json'))

@@ -1,2 +1,7 @@
 flask>=2.0.0
 gevent>=21.7.0
+pyyaml
+ipy
+fastapi
+uvicorn
+pyreadline>2.0

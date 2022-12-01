@@ -1,69 +1,69 @@
 import logging
 import multiprocessing as mp
 import os
-import select
 import socket
 import time
-from typing import List, Dict, Optional, Union, Any
+from typing import List, Dict, Optional
 
-import tqdm
+import select
 
+from tcpbroker.common import IMUConnection
 from tcpbroker.config import BrokerConfig
 from .tcp_process import tcp_process_task
 
 
-def tcp_listen_task(address: str,
-                    port: int,
-                    config: BrokerConfig,
-                    measurement_name: str,
+def tcp_listen_task(config: BrokerConfig,
+                    tag: str,
                     stop_ev: mp.Event,
                     finish_ev: mp.Event,
-                    client_addr_queue: mp.Queue = None,
+                    client_info_queue: mp.Queue = None,
+                    imu_stat_queue: mp.Queue = None,
                     ) -> None:
-    # Create client listeners
+    logger = logging.getLogger('tcp_listen_task')
+    logger.setLevel(logging.DEBUG) if config.debug else logger.setLevel(logging.INFO)
 
+    measurement_basedir = os.path.join(config.base_dir, tag)
     # Check the existence of output directory
-    measurement_basedir = os.path.join(config.DATA_DIR, measurement_name)
-    # Use lock to avoid duplicate creation
     if not os.path.exists(measurement_basedir):
         os.makedirs(measurement_basedir)
-    client_queues: List[mp.Queue] = [mp.Queue() for _ in range(config.N_PROCS)]
 
+    client_queues: List[mp.Queue] = [mp.Queue() for _ in range(config.n_procs)]
+
+    # Create client processors
     client_procs: List[mp.Process] = [
         mp.Process(None,
                    tcp_process_task,
-                   f"tcp_process_{i}", (
+                   f"tcp_process_{i}",
+                   (
                        client_queues[i],
                        config,
                        measurement_basedir,
                        i,
                        stop_ev,
+                       imu_stat_queue
                    ),
-                   daemon=False) for i in range(config.N_PROCS)
+                   daemon=False) for i in range(config.n_procs)
     ]
-    with tqdm.tqdm(range(len(client_procs))) as pbar:
-        for proc in client_procs:  # Start all listeners
-            proc.start()
-            pbar.update()
+    [p.start() for p in client_procs]
 
     n_client: int = 0
-
-    # Setup the server
+    # Set up the server
     server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((address, port))
-    server_socket.listen(config.N_PROCS)
-    logging.info(f"Binding address {address}:{port}")
+    server_socket.bind((config.data_addr, config.data_port))
+    server_socket.listen(config.n_procs)
+    logger.info(f"binding address {config.data_addr}:{config.data_port}")
 
     try:
         while True:
             client_read_ready_fds, _, _ = select.select([server_socket.fileno()], [], [], 1)
             if len(client_read_ready_fds) > 0:
                 client_socket, (client_address, client_port) = server_socket.accept()
-                logging.info(f"New client {client_address}:{client_port}")
+                logger.info(f"new client {client_address}:{client_port}")
 
-                if client_addr_queue is not None:
-                    client_addr_queue.put(client_address)
+                new_client = IMUConnection(client_socket, client_address, client_port)
+                if client_info_queue is not None:
+                    client_info_queue.put(new_client)
 
                 client_socket.setblocking(False)  # Non-blocking
 
@@ -75,12 +75,7 @@ def tcp_listen_task(address: str,
                     client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
 
                 # Evenly distribute client to subprocesses
-                client_info: Dict[str, Optional[socket.socket]] = {
-                    "addr": client_address,
-                    "port": client_port,
-                    "socket": client_socket
-                }
-                client_queues[n_client % config.N_PROCS].put(client_info)
+                client_queues[n_client % config.n_procs].put(new_client)
                 n_client += 1
 
             if not any([proc.is_alive() for proc in client_procs]) or stop_ev.is_set():
@@ -88,13 +83,13 @@ def tcp_listen_task(address: str,
             else:
                 time.sleep(0.01)
     except KeyboardInterrupt:
-        logging.info("main process tcp_listen capture keyboard interrupt")
+        logger.info("tcp_listen process capture keyboard interrupt")
 
-    logging.info("joining all processes")
+    logger.info("joining all processes")
     for proc in client_procs:
-        logging.debug(f"Joining {proc}")
+        logger.debug(f"joining {proc}")
         proc.join()
 
     server_socket.close()
     finish_ev.set()
-    logging.debug(f"all processes are joined")
+    logger.debug(f"all processes are joined")

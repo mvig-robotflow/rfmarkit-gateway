@@ -1,64 +1,54 @@
 import logging
-import multiprocessing as mp
-import socket
-from concurrent.futures import ThreadPoolExecutor
-from typing import List, Union
 
+from py_cli_interaction import must_parse_cli_sel
+from rich.console import Console
+
+from tcpbroker.common import tcp_broadcast_command
 from tcpbroker.config import BrokerConfig
-from tcpbroker.applications.control import probe, broadcast_command
-
-def print_help():
-    print("\n\
-    > 1. 查看在线传感器情况\n\
-    > 2. 启动传感器\n\
-    > 3. 停止传感器\n\
-    > 4. 重置传感器\n\
-    \n\n")
+from tcpbroker.utils import parse_cidr_addresses
 
 
-def easy_setup(port: int, config: BrokerConfig):
-    # Get subnet, like [10,52,24,0]
-    subnet = list(map(lambda x: int(x), config.DEFAULT_SUBNET.split("."))) if config.DEFAULT_SUBNET is not None else None
-    if subnet is None:
-        try:
-            subnet: List[int] = list(
-                map(lambda x: int(x), input("输入IMU网段，将被认为是/24网段, e.g. 10.53.24.0\n> ").split(".")))
-        except ValueError:
-            logging.info("Wrong input, use default value(192.168.1.0)")
-            subnet = [192, 168, 1, 0]
+def easy_setup(config: BrokerConfig):
+    _logger = logging.getLogger("easy_setup")
+    console = Console()
+    imu_addresses = parse_cidr_addresses(config.imu_addresses)
+    imu_port = config.imu_port
 
-        except (KeyboardInterrupt, EOFError):
-            print("Control Exiting")
-            return
-
-    print(f"欢迎使用IMU控制系统，\n\n 发送到{subnet}\n")
+    _logger.debug(imu_addresses)
+    _logger.debug(imu_port)
 
     try:
         while True:
-            print_help()
-            command = input("> ")
-            try:
-                command = int(command)
-            except ValueError:
-                print("\n错误的输入\n")
-                continue
-            
-            if command == 1:
-                broadcast_command(subnet, port, "ping", None)
-            elif command == 2:
-                broadcast_command(subnet, port, "start", None)
-            elif command == 3:
-                broadcast_command(subnet, port, "stop", None)
-            elif command == 4:
-                broadcast_command(subnet, port, "restart", None)
+            sel: int = must_parse_cli_sel("请选择操作：",
+                                          [
+                                              "查看在线传感器情况",
+                                              "启动传感器",
+                                              "停止传感器",
+                                              "重置传感器",
+                                              "退出"
+                                          ],
+                                          1, 5)
+
+            if sel == 1:
+                tcp_broadcast_command(imu_addresses, imu_port, "ping", True)
+            elif sel == 2:
+                tcp_broadcast_command(imu_addresses, imu_port, "start", True)
+            elif sel == 3:
+                tcp_broadcast_command(imu_addresses, imu_port, "stop", True)
+            elif sel == 4:
+                tcp_broadcast_command(imu_addresses, imu_port, "restart", True)
+            elif sel == 5:
+                break
             else:
                 print("\n错误的输入\n")
 
             # print_help()
     except (KeyboardInterrupt, EOFError):
-        print("Control Exiting")
+        pass
+    finally:
+        console.log("easy_setup Exiting")
         return
 
 
 if __name__ == '__main__':
-    easy_setup(18888, BrokerConfig('./config.json'))
+    easy_setup(BrokerConfig())

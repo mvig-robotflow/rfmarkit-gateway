@@ -1,3 +1,3 @@
-from .applications import control, measure
-from .applications.control import broadcast_command, probe, gen_arguments
-from .common import ClientRegistry
+from .applications import control_from_keyboard
+from .common.tcp import tcp_broadcast_command
+from .common import ClientRepo
