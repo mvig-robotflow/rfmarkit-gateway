@@ -6,7 +6,7 @@ requires = open("./requirements.txt", "r").readlines() if os.path.exists("./requ
 
 setup(
     name="tcpbroker",
-    version="1.4",
+    version="1.5",
     author="davidliyutong",
     author_email="davidliyutong@sjtu.edu.cn",
     description="IMU message broker",
