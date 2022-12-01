@@ -2,7 +2,7 @@ import os
 
 from setuptools import setup
 
-requires = open("./requirements.txt", "r").readlines() if os.path.exists("./requirements.txt") else open("./tcpbroker.egg-info/requires.txt", "r").readlines()
+requires = open("./requirements.txt", "r").readlines() if os.path.exists("./requirements.txt") else open("./cvt_measurement.egg-info/requires.txt", "r").readlines()
 
 setup(
     name="cvt_measurement",
