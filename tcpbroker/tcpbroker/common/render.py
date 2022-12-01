@@ -3,7 +3,7 @@ import multiprocessing as mp
 import struct
 import time
 from io import BytesIO
-from typing import Dict, List, Tuple, Optional, BinaryIO
+from typing import Dict, List, Tuple, Optional, BinaryIO, Union
 
 
 class IMURender:
@@ -23,12 +23,12 @@ class IMURender:
     update_interval_s: Optional[float] = None
     last_update_time: Optional[float] = None
 
-    stat: Optional[Dict] = None
-    stat_is_valid: bool = False
+    state: Optional[Dict[str, Union[float, str, int]]] = None
+    state_is_valid: bool = False
 
     def __init__(self,
                  filename: str = None,
-                 update_interval_s: float = 1e-2,
+                 update_interval_s: float = 1e-1,
                  out_queue: mp.Queue = None):
         self.filename = filename
         if self.filename is not None:
@@ -38,7 +38,7 @@ class IMURender:
         self.update_interval_s = update_interval_s
         self.last_update_time = time.time()
 
-    def _parse_packet(self, pkt: bytes) -> Dict:
+    def _parse_packet(self, pkt: bytes) -> Dict[str, Union[float, str, int]]:
         imu_struct = struct.unpack(self.ch_imu_data_t_fmt,
                                    pkt[self.addr_length:self.addr_length + self.imu_packet_length])
         meta_struct = struct.unpack(self.dgram_meta_t_fmt, pkt[self.addr_length + self.imu_packet_length:])
@@ -58,44 +58,52 @@ class IMURender:
                      }
         return {**imu_dict, **meta_dict}
 
-    def _try_sync(self, data: bytes) -> Tuple[bool, List[Dict]]:
-        self.buffer.write(data)
-        self.buffer.seek(0)
+    def _try_sync(self, data: bytes) -> Tuple[bool, List[Dict[str, Union[float, str, int]]]]:
+        try:
+            self.buffer.write(data)
+            self.buffer.seek(0)
 
-        while (addr := self.buffer.read(1)) != self.imu_addr:
-            if addr == b'':
+            while (addr := self.buffer.read(1)) != self.imu_addr:
+                if addr == b'':
+                    return False, []
+            self.buffer.seek(self.buffer.tell() - 1)
+
+            data_valid = sum(self.buffer.read(self.packet_length)) % 0x100 == sum(self.buffer.read(1))
+            if data_valid:
+                self.buffer.seek(self.buffer.tell() - self.packet_length - 1)
+                res = []
+                while True:
+                    pkt = self.buffer.read(self.packet_length)
+                    checksum = self.buffer.read(1)
+                    if len(pkt) < self.packet_length or checksum == b'':
+                        self.buffer = BytesIO(pkt)
+                        self.buffer.read()  # move pointer to end using read
+                        break
+                    res.append(self._parse_packet(pkt))
+                return True, res
+            else:
                 return False, []
-        self.buffer.seek(self.buffer.tell() - 1)
-
-        data_valid = sum(self.buffer.read(self.packet_length)) % 0x100 == sum(self.buffer.read(1))
-        if data_valid:
-            self.buffer.seek(self.buffer.tell() - self.packet_length - 1)
-            res = []
-            while True:
-                pkt = self.buffer.read(self.packet_length)
-                checksum = self.buffer.read(1)
-                if len(pkt) < self.packet_length or checksum == b'':
-                    self.buffer = BytesIO(pkt)
-                    self.buffer.read()  # move pointer to end using read
-                    break
-                res.append(self._parse_packet(pkt))
-            return True, res
-        else:
+        except ValueError as _:
+            logging.warning("value error encountered in IMURender")
             return False, []
 
     def update(self, data: bytes):
         # If not synced, try to sync
         success, res = self._try_sync(data)
         if success:
-            self.stat_is_valid = True
-            self.stat = res[-1]
+            self.state_is_valid = True
+            self.state = res[-1]
             # Communicate
-            if self.out_queue is not None:
-                if time.time() - self.last_update_time > self.update_interval_s:
-                    self.out_queue.put(self.stat, timeout=1)
-                    self.last_update_time = time.time()
+            if self.out_queue is not None and not self.out_queue.full():
+                try:
+                    time_elapsed = time.time() - self.last_update_time
+                    if time_elapsed > self.update_interval_s:
+                        self.out_queue.put(self.state, timeout=1)
+                        self.last_update_time = time.time()
+                except TimeoutError as _:  # ignore timeout error
+                    pass
         else:
-            self.stat_is_valid = False
+            self.state_is_valid = False
 
         # Flush data to disk
         if self.file_handle is not None:

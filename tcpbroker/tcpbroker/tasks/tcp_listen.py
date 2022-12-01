@@ -3,7 +3,7 @@ import multiprocessing as mp
 import os
 import socket
 import time
-from typing import List, Dict, Optional
+from typing import List
 
 import select
 
@@ -17,7 +17,7 @@ def tcp_listen_task(config: BrokerConfig,
                     stop_ev: mp.Event,
                     finish_ev: mp.Event,
                     client_info_queue: mp.Queue = None,
-                    imu_stat_queue: mp.Queue = None,
+                    imu_state_queue: mp.Queue = None,
                     ) -> None:
     logger = logging.getLogger('tcp_listen_task')
     logger.setLevel(logging.DEBUG) if config.debug else logger.setLevel(logging.INFO)
@@ -40,7 +40,7 @@ def tcp_listen_task(config: BrokerConfig,
                        measurement_basedir,
                        i,
                        stop_ev,
-                       imu_stat_queue
+                       imu_state_queue
                    ),
                    daemon=False) for i in range(config.n_procs)
     ]
@@ -61,7 +61,13 @@ def tcp_listen_task(config: BrokerConfig,
                 client_socket, (client_address, client_port) = server_socket.accept()
                 logger.info(f"new client {client_address}:{client_port}")
 
-                new_client = IMUConnection(client_socket, client_address, client_port)
+                new_client = IMUConnection(client_socket,
+                                           client_address,
+                                           client_port,
+                                           render_packet=config.render_packet,
+                                           imu_port=config.imu_port,
+                                           proc_id=n_client % config.n_procs,
+                                           update_interval_s=config.update_interval_s)
                 if client_info_queue is not None:
                     client_info_queue.put(new_client)
 

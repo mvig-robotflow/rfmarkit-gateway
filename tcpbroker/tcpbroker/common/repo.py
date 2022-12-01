@@ -3,9 +3,10 @@ import logging
 import multiprocessing as mp
 import os
 import socket
-from typing import Dict, BinaryIO, Tuple, Union
+from typing import Dict, BinaryIO, Tuple, Optional
 
 from .render import IMURender
+from .tcp import tcp_send_bytes, IMUControlMessage
 
 
 @dataclasses.dataclass()
@@ -15,6 +16,7 @@ class IMUConnection:
     port: int
     render_packet: bool = False
     proc_id: int = None
+    update_interval_s: float = 1e-1
 
     tcp_fd: int = None
     active: bool = False
@@ -22,6 +24,9 @@ class IMUConnection:
     render: IMURender = None
     buffer: BinaryIO = None
     out_queue: mp.Queue = None
+
+    imu_port: Optional[int] = None
+    device_id: Optional[str] = None
 
     def __post_init__(self):
         self.tcp_fd = self.socket.fileno()
@@ -31,12 +36,12 @@ class IMUConnection:
                     filename: str,
                     out_queue: mp.Queue = None):
         if self.render_packet:
-            self.render = IMURender(filename, out_queue=out_queue)  # TODO update_interval_s is not used
+            self.render = IMURender(filename, out_queue=out_queue, update_interval_s=self.update_interval_s)
         else:
             self.buffer = open(filename, 'ab')
 
     def close(self):
-        if getattr(self.socket, '_closed'):
+        if not getattr(self.socket, '_closed'):
             # If not closed by imu, then the case is that we intend to close socket for some reason
             # -> use shutdown to notify imu
             self.socket.shutdown(2)
@@ -54,12 +59,29 @@ class IMUConnection:
             else:
                 raise ValueError("No buffer or render object")
 
+    def query_device_id(self) -> Optional[str]:
+        if self.device_id is None:
+            if self.addr is not None:
+                try:
+                    resp: IMUControlMessage = tcp_send_bytes(self.addr, self.imu_port, "id")
+                    if resp.success:
+                        self.device_id = resp.msg[:12]  # length of device id = length of mac address
+                        return self.device_id
+                    else:
+                        return None
+                except Exception as _:
+                    return None
+            else:
+                return None
+        else:
+            return self.device_id
+
 
 class ClientRepo:
-    def __init__(self, base_dir, proc_id, imu_stat_queue: mp.Queue = None):
+    def __init__(self, base_dir, proc_id, imu_state_queue: mp.Queue = None):
         self.base_dir = base_dir
         self.proc_id = proc_id
-        self.imu_stat_queue = imu_stat_queue
+        self.imu_state_queue = imu_state_queue
 
         self.index_by_fd: Dict[int, IMUConnection] = {}
 
@@ -70,7 +92,7 @@ class ClientRepo:
         # Registration of New client
         fd = client.tcp_fd
         if client.tcp_fd not in self.index_by_fd.keys():
-            client.set_backend(os.path.join(self.base_dir, f'process_{str(self.proc_id)}_{fd}.dat'), out_queue=self.imu_stat_queue)
+            client.set_backend(os.path.join(self.base_dir, f'process_{str(self.proc_id)}_{fd}.dat'), out_queue=self.imu_state_queue)
             self.index_by_fd[fd] = client
         else:
             logging.warning(f"the fd: {fd} is already registered with client {self.index_by_fd[fd]}")

@@ -94,7 +94,7 @@ class vtkTimerCallback:
         self.imu_actors[imu_id] = act
         self.imu_pos[imu_id] = np.array([len(self.imu_actors) * 100, 0, 0]).astype(float)
 
-    def _decode_imu_stat_dict(self, imu_dict: Dict[str, Any]):
+    def _decode_imu_state_dict(self, imu_dict: Dict[str, Any]):
         if imu_dict['id'] not in self.imu_actors.keys():
             self._create_imu_actor(imu_dict['id'])
 
@@ -111,7 +111,7 @@ class vtkTimerCallback:
     def execute(self, obj, event):
 
         imu_dict = self.in_queue.get()
-        self._decode_imu_stat_dict(imu_dict)
+        self._decode_imu_state_dict(imu_dict)
 
         for actor_id, actor in self.imu_actors.items():
             actor.x_actor.SetOrientation(0, 0, 0)
@@ -161,6 +161,10 @@ def imu_render_ui_task(config: BrokerConfig,
                        stop_ev: mp.Event,
                        finish_ev: mp.Event,
                        q: mp.Queue):
+    assert config.enable_gui is True, "GUI is not enabled in config"
+    if stop_ev.is_set():
+        return
+
     renderer, _, interactor = init_canvas()
 
     # Add callback

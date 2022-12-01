@@ -28,11 +28,11 @@ def tcp_process_task(client_socket_queue: mp.Queue,
                      base_dir: str,
                      proc_id: int,
                      stop_ev: mp.Event,
-                     imu_stat_queue: mp.Queue = None):
+                     imu_state_queue: mp.Queue = None):
     _logger = logging.getLogger('tcp_process_task')
     _logger.setLevel(logging.DEBUG) if config.debug else _logger.setLevel(logging.INFO)
 
-    registration = ClientRepo(base_dir, proc_id, imu_stat_queue=imu_stat_queue)
+    registration = ClientRepo(base_dir, proc_id, imu_state_queue=imu_state_queue)
     recv_size = config.tcp_buff_sz
 
     try:
@@ -42,8 +42,9 @@ def tcp_process_task(client_socket_queue: mp.Queue,
                 registration.register(IMUConnection(new_client.socket,
                                                     new_client.addr,
                                                     new_client.port,
-                                                    render_packet=config.enable_gui,
-                                                    proc_id=proc_id))
+                                                    render_packet=new_client.render_packet,
+                                                    proc_id=new_client.proc_id,
+                                                    update_interval_s=new_client.update_interval_s))
 
             if len(registration) > 0:
                 client_read_ready_fds, _, _ = select.select(list(registration.index_by_fd.keys()), [], [], 1)
@@ -65,8 +66,8 @@ def tcp_process_task(client_socket_queue: mp.Queue,
                         registration.mark_as_online(fd)
 
                     cli.update(data)
-                    if imu_stat_queue is not None and cli.render is not None:
-                        imu_stat_queue.put(cli.render.stat)
+                    if imu_state_queue is not None and cli.render is not None:
+                        imu_state_queue.put(cli.render.state)
 
             if stop_ev.is_set():
                 _logger.debug("closing sockets")

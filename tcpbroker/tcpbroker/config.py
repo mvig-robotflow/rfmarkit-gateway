@@ -15,6 +15,8 @@ class BrokerConfig:
     __DEFAULT_DATA_PORT__: int = 18888
     __DEFAULT_DATA_ADDR__: str = "0.0.0.0"
     __DEFAULT_ENABLE_GUI__: bool = False
+    __DEFAULT_RENDER_PACKET__: bool = True
+    __DEFAULT_UPDATE_INTERVAL_S__: float = 1e-1
     __DEFAULT_DEBUG__: bool = False
 
     n_procs: int = __DEFAULT_N_PROCS__
@@ -25,6 +27,8 @@ class BrokerConfig:
     data_port: int = __DEFAULT_DATA_PORT__
     data_addr: str = __DEFAULT_DATA_ADDR__
     enable_gui: bool = __DEFAULT_ENABLE_GUI__
+    render_packet: bool = __DEFAULT_RENDER_PACKET__
+    update_interval_s: float = __DEFAULT_UPDATE_INTERVAL_S__
     debug: bool = __DEFAULT_DEBUG__
 
     imu_addresses: List[str] = None
@@ -51,6 +55,8 @@ class BrokerConfig:
         self.data_port: int = src['data_port']
         self.data_addr: str = src['data_addr']
         self.enable_gui: bool = src['enable_gui']
+        self.render_packet: bool = src['render_packet']
+        self.update_interval_s: float = src['update_interval_s']
         self.imu_addresses = src['imu_addresses']
         self.debug = src['debug']
 
@@ -64,6 +70,8 @@ class BrokerConfig:
             'data_port': self.data_port,
             'data_addr': self.data_addr,
             'enable_gui': self.enable_gui,
+            'render_packet': self.render_packet,
+            'update_interval_s': self.update_interval_s,
             'imu_addresses': self.imu_addresses,
             'debug': self.debug
         }
@@ -77,6 +85,8 @@ class BrokerConfig:
         self.data_port = must_parse_cli_int("Data port?", default_value=self.__DEFAULT_IMU_PORT__)
         self.data_addr = must_parse_cli_string("Data address?", default_value=self.__DEFAULT_DATA_ADDR__)
         self.enable_gui = must_parse_cli_bool("Enable GUI?", default_value=False)
+        self.render_packet = must_parse_cli_bool("Render packet?", default_value=True)
+        self.update_interval_s = must_parse_cli_float("Update interval (s)?", min=1e-3, max=1e3, default_value=self.__DEFAULT_UPDATE_INTERVAL_S__)
         self.debug = must_parse_cli_bool("Debug?", default_value=False)
 
 

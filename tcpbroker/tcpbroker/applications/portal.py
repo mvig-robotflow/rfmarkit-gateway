@@ -3,8 +3,9 @@ import multiprocessing as mp
 import os
 import os.path as osp
 import signal
+import threading
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict, Union
 
 import uvicorn
 from fastapi import FastAPI
@@ -12,17 +13,25 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from cvt_measurement import convert_measurement
+from tcpbroker.common import IMUConnection, tcp_broadcast_command
 from tcpbroker.config import BrokerConfig
 from tcpbroker.tasks import measure
-from tcpbroker.utils import get_datetime_tag
+from tcpbroker.utils import get_datetime_tag, parse_cidr_addresses
 
 app = FastAPI()
+LOGGER: Optional[logging.Logger] = None
 
 STOP_EV: mp.Event = mp.Event()
 FINISH_EV: mp.Event = mp.Event()
+
+# Values are reset from one run to another
 TCP_PROCS: List[mp.Process] = []
+IMU_STATES: Dict[str, Dict[str, Union[float, str, int]]] = {}  # index is device_id
+IMU_ADDRESSES: Dict[str, Union[str, List[str]]] = {"unknown": []}  # index is device_id
+
 CONFIG: Optional[BrokerConfig] = None
-LOGGER: Optional[logging.Logger] = None
+CLIENT_INFO_QUEUE: Optional[mp.Queue] = None
+IMU_STATE_QUEUE: Optional[mp.Queue] = None
 
 
 def make_response(status_code, **kwargs):
@@ -39,10 +48,10 @@ def measure_and_convert(
         signal_stop: mp.Event = None,
         signal_finish: mp.Event = None,
         client_info_queue: mp.Queue = None,
-        imu_stat_queue: mp.Queue = None
+        imu_state_queue: mp.Queue = None
 ):
     global LOGGER
-    measure(cfg, tag, signal_stop, client_info_queue, imu_stat_queue)
+    measure(cfg, tag, signal_stop, client_info_queue, imu_state_queue)
 
     try:
         convert_measurement(osp.join(cfg.base_dir, tag))
@@ -62,9 +71,44 @@ def status():
     return make_response(status_code=200, active_processes=[proc.is_alive() for proc in TCP_PROCS].count(True))
 
 
+@app.get("/v1/imu/connection")
+def imu_connection():
+    global IMU_STATES, IMU_ADDRESSES
+    return make_response(status_code=200, imu_ids=list(IMU_STATES.keys()), imu_addresses=IMU_ADDRESSES)
+
+
+@app.post("/v1/imu/control")
+def imu_control(command: str = None):
+    global IMU_ADDRESSES, CONFIG
+    if command is None:
+        return make_response(status_code=400, message="command is required")
+    else:
+        imu_addresses = parse_cidr_addresses(CONFIG.imu_addresses)
+        resp = tcp_broadcast_command(imu_addresses, CONFIG.imu_port, command)
+        return make_response(status_code=200, resp=resp)
+
+
+@app.get("/v1/imu/state")
+def imu_state():
+    global IMU_STATES
+    return make_response(status_code=200, imu_states=IMU_STATES)
+
+
+@app.get("/v1/imu/state/{device_id}")
+def imu_state_device_id(device_id: str = None):
+    global IMU_STATES
+    if device_id is None:
+        return make_response(status_code=400, message="device_id is required")
+    else:
+        if device_id in IMU_STATES.keys():
+            return make_response(status_code=200, imu_state=IMU_STATES[device_id])
+        else:
+            return make_response(status_code=500, message=f"device_id  is not connected")
+
+
 @app.post("/v1/start")
 def start_process(tag: str = None, experiment_log: str = None):
-    global TCP_PROCS, STOP_EV, FINISH_EV, CONFIG, LOGGER
+    global TCP_PROCS, STOP_EV, FINISH_EV, CONFIG, LOGGER, CLIENT_INFO_QUEUE, IMU_STATE_QUEUE, IMU_STATES, IMU_ADDRESSES
 
     # Wait until last capture ends
     if len(TCP_PROCS) > 0:
@@ -75,7 +119,10 @@ def start_process(tag: str = None, experiment_log: str = None):
                 if any([proc.is_alive() for proc in TCP_PROCS]):
                     LOGGER.warning(" Join timeout")
                     [os.kill(proc.pid, signal.SIGTERM) for proc in TCP_PROCS if proc.is_alive()]
+                # Clean up memory, prepare for next run
                 TCP_PROCS = []
+                IMU_STATES = {}
+                IMU_ADDRESSES = {"unknown": []}
             else:
                 return make_response(status_code=500, msg="NOT FINISHED")
         else:
@@ -94,9 +141,6 @@ def start_process(tag: str = None, experiment_log: str = None):
             experiment_log = 'None'
         LOGGER.info(f"experiment_log={experiment_log}")
 
-        client_info_queue = mp.Queue()
-        imu_stat_queue = mp.Queue()
-
         if len(TCP_PROCS) <= 0:
             TCP_PROCS = [
                 mp.Process(
@@ -108,8 +152,8 @@ def start_process(tag: str = None, experiment_log: str = None):
                         tag,
                         STOP_EV,
                         FINISH_EV,
-                        client_info_queue,
-                        imu_stat_queue
+                        CLIENT_INFO_QUEUE,
+                        IMU_STATE_QUEUE
                     )
                 )
             ]
@@ -148,23 +192,72 @@ def kill_record():
         return make_response(status_code=500, msg="NOT RUNNING")
 
 
+def update_imu_state_thread():
+    global IMU_STATE_QUEUE, IMU_STATES, LOGGER
+    while True:
+        if IMU_STATE_QUEUE is not None:
+            if not IMU_STATE_QUEUE.empty():
+                try:
+                    msg = IMU_STATE_QUEUE.get(timeout=0.1)
+                    if msg is not None:
+                        if msg['id'] in IMU_STATES.keys():
+                            IMU_STATES[msg['id']] = msg
+                except Exception:
+                    pass
+        else:
+            time.sleep(0.1)
+
+
+def update_client_info_thread():
+    global CLIENT_INFO_QUEUE, IMU_STATES, LOGGER
+    while True:
+        if CLIENT_INFO_QUEUE is not None:
+            if not CLIENT_INFO_QUEUE.empty():
+                try:
+                    conn: IMUConnection = CLIENT_INFO_QUEUE.get(timeout=0.1)
+                    if conn is not None:
+                        IMU_ADDRESSES['unknown'].append(conn.addr)
+                        retry = 5
+                        while conn.query_device_id() is None and retry > 0:
+                            time.sleep(2)
+                            retry -= 1
+
+                        if retry > 0:
+                            LOGGER.info(f"IMUConnection(addr={conn.addr}, device_id={conn.device_id})")
+                            if conn.device_id not in IMU_STATES.keys():
+                                IMU_STATES[conn.device_id] = {}
+                            if conn.device_id not in IMU_ADDRESSES.keys():
+                                IMU_ADDRESSES[conn.device_id] = conn.addr
+                        else:
+                            LOGGER.warning(f"failed to get device_id from IMUConnection(addr={conn.addr}, device_id=None)")
+                except Exception:
+                    pass
+        else:
+            time.sleep(0.1)
+
+
 def portal(cfg: BrokerConfig):
     # Recording parameters
-    global IMU_PORT, CONFIG, LOGGER
+    global CONFIG, LOGGER, IMU_STATE_QUEUE, CLIENT_INFO_QUEUE
 
-    IMU_PORT = cfg.imu_port
-    API_PORT = cfg.api_port
+    IMU_STATE_QUEUE = mp.Queue()
+    CLIENT_INFO_QUEUE = mp.Queue()
+
     CONFIG = cfg
 
     # setting global parameters
     logging.basicConfig(level=logging.INFO)
     LOGGER = logging.getLogger("tcpbroker.portal")
     # Prepare system
-    LOGGER.info(f"prepare tcpbroker:{IMU_PORT} at {API_PORT}")
+    LOGGER.info(f"prepare tcpbroker:{cfg.imu_port} at {cfg.api_port}")
+
+    # Start threads
+    threading.Thread(target=update_imu_state_thread, daemon=True).start()
+    threading.Thread(target=update_client_info_thread, daemon=True).start()
 
     try:
         # app.run(host='0.0.0.0', port=api_port)
-        uvicorn.run(app=app, port=API_PORT)
+        uvicorn.run(app=app, port=cfg.api_port)
     except KeyboardInterrupt:
         LOGGER.info(f"portal() got KeyboardInterrupt")
         return

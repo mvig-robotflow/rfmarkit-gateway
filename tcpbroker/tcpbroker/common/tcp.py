@@ -12,7 +12,7 @@ class IMUControlMessage:
     success: bool = False
 
 
-def tcp_send_bytes(addr: str, port: str, data: Union[str, bytes]):
+def tcp_send_bytes(addr: str, port: int, data: Union[str, bytes]):
     data = data.encode(encoding='ascii')
     reply = ''
 
