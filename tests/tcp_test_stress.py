@@ -1,9 +1,9 @@
-import subprocess
-import time
-from typing import List
 import argparse
-import sys
 import logging
+import subprocess
+import sys
+import time
+
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == '__main__':
@@ -19,11 +19,11 @@ if __name__ == '__main__':
         p = subprocess.Popen(f'{sys.executable} {args.name}', shell=True)
         process_list.append(p)
         time.sleep(0.5)
-    
+
     logging.info(f"Processes: {process_list}")
     for process in process_list:
         print(process)
-    
+
     try:
         while True:
             time.sleep(1)

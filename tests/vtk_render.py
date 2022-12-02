@@ -1,11 +1,9 @@
+import math
 import random
+from typing import List
 
 import tqdm
-from serial import Serial
-import json
 import vtk
-import math
-from typing import List
 
 
 class vtkTimerCallback():
@@ -18,9 +16,9 @@ class vtkTimerCallback():
     def _update_transform(self):
         imu_data_dict = {
             "q0": 1 + random.random() * 0.03,
-            "q1":0 + random.random() * 0.03,
-            "q2":0 + random.random() * 0.03,
-            "q3":0 + random.random() * 0.03
+            "q1": 0 + random.random() * 0.03,
+            "q2": 0 + random.random() * 0.03,
+            "q3": 0 + random.random() * 0.03
         }
 
         q0, q1, q2, q3 = imu_data_dict["q0"], imu_data_dict["q1"], imu_data_dict["q2"], imu_data_dict["q3"]

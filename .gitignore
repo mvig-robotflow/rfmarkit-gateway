@@ -6,7 +6,7 @@
 *.log
 
 */imu_data
-tools/data
+tests/data
 ota/*
 
 *.DS_Store

@@ -38,6 +38,8 @@ class BrokerConfig:
             with open(path_to_yaml_file) as f:
                 base_cfg_dict = yaml.load(f, Loader=yaml.SafeLoader)
             self.load_dict(base_cfg_dict['imu'])
+        else:
+            self.__post_init__()
 
     def __repr__(self):
         return f"<BrokerConfig: data_dir={self.base_dir}, api_port={self.api_port}>"
@@ -59,6 +61,7 @@ class BrokerConfig:
         self.update_interval_s: float = src['update_interval_s']
         self.imu_addresses = src['imu_addresses']
         self.debug = src['debug']
+        self.__post_init__()
 
     def get_dict(self) -> Dict[str, Any]:
         return {

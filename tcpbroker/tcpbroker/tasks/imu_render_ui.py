@@ -34,18 +34,20 @@ def init_canvas(title: str = "IMU", resolution: Tuple[int] = (960, 540)):
 
 
 class IMUAxisActorBundle:
-    def __init__(self, path_to_model='./obj'):
-        x_axis_stl_path = os.path.join(path_to_model, 'x.stl')
-        y_axis_stl_path = os.path.join(path_to_model, 'y.stl')
-        z_axis_stl_path = os.path.join(path_to_model, 'z.stl')
+    def __init__(self, path_to_model='./obj', grey: bool = False):
+        self.path_to_model = os.path.join(os.path.dirname(os.path.abspath(__file__)), "obj")
+        x_axis_stl_path = os.path.join(path_to_model, os.path.join(self.path_to_model ,'x.stl'))
+        y_axis_stl_path = os.path.join(path_to_model, os.path.join(self.path_to_model ,'y.stl'))
+        z_axis_stl_path = os.path.join(path_to_model, os.path.join(self.path_to_model ,'z.stl'))
 
         self.x_actor = self.add_stl_object(x_axis_stl_path)
         self.y_actor = self.add_stl_object(y_axis_stl_path)
         self.z_actor = self.add_stl_object(z_axis_stl_path)
 
-        self.x_actor.GetProperty().SetColor(1.0, 0.0, 0.0)
-        self.y_actor.GetProperty().SetColor(0.0, 1.0, 0.0)
-        self.z_actor.GetProperty().SetColor(0.0, 0.0, 1.0)
+        if not grey:
+            self.x_actor.GetProperty().SetColor(1.0, 0.0, 0.0)
+            self.y_actor.GetProperty().SetColor(0.0, 1.0, 0.0)
+            self.z_actor.GetProperty().SetColor(0.0, 0.0, 1.0)
 
     @staticmethod
     def add_stl_object(filename) -> vtk.vtkActor:
@@ -78,7 +80,7 @@ class vtkTimerCallback:
         self._create_world_actor()
 
     def _create_world_actor(self):
-        act = IMUAxisActorBundle()
+        act = IMUAxisActorBundle(grey=True)
         self.renderer.AddActor(act.x_actor)
         self.renderer.AddActor(act.y_actor)
         self.renderer.AddActor(act.z_actor)
@@ -92,16 +94,17 @@ class vtkTimerCallback:
         self.renderer.AddActor(act.y_actor)
         self.renderer.AddActor(act.z_actor)
         self.imu_actors[imu_id] = act
-        self.imu_pos[imu_id] = np.array([len(self.imu_actors) * 100, 0, 0]).astype(float)
+
+        _width = 4
+        _gap = 15
+        x, y = len(self.imu_actors) % _width, len(self.imu_actors) // _width
+        self.imu_pos[imu_id] = np.array([x * _gap, y * _gap, 0]).astype(float)
 
     def _decode_imu_state_dict(self, imu_dict: Dict[str, Any]):
         if imu_dict['id'] not in self.imu_actors.keys():
             self._create_imu_actor(imu_dict['id'])
 
         q0, q1, q2, q3 = imu_dict["quat_w"], imu_dict["quat_x"], imu_dict["quat_y"], imu_dict["quat_z"]
-        # roll = math.atan2(2*(q0*q3+q1*q2), 1-2*(q2**2+q3**2)) * 180 / math.pi
-        # pitch = math.asin(2*(q0*q2-q3*q1)) * 180 / math.pi
-        # yaw = math.atan2(2*(q0*q1+q2*q3), 1-2*(q1**2+q2**2)) * 180 / math.pi
         roll = - math.atan2(2 * (q2 * q3 - q0 * q1), 2 * (q0 ** 2 + q3 ** 2) - 1) * 180 / math.pi
         pitch = math.asin(2 * (q1 * q3 + q0 * q2)) * 180 / math.pi
         yaw = - math.atan2(2 * (q1 * q2 - q0 * q3), 2 * (q0 ** 2 + q1 ** 2) - 1) * 180 / math.pi
@@ -110,8 +113,11 @@ class vtkTimerCallback:
 
     def execute(self, obj, event):
 
-        imu_dict = self.in_queue.get()
-        self._decode_imu_state_dict(imu_dict)
+        count = 0
+        while self.in_queue.qsize() > 100 and count < 10:
+            imu_dict = self.in_queue.get()
+            self._decode_imu_state_dict(imu_dict)
+            count += 1
 
         for actor_id, actor in self.imu_actors.items():
             actor.x_actor.SetOrientation(0, 0, 0)
@@ -157,11 +163,9 @@ def keyboard_interact_task(imu_id: str, q: mp.Queue):
         q.put(imu_data_dict)
 
 
-def imu_render_ui_task(config: BrokerConfig,
-                       stop_ev: mp.Event,
+def imu_render_ui_task(stop_ev: mp.Event,
                        finish_ev: mp.Event,
                        q: mp.Queue):
-    assert config.enable_gui is True, "GUI is not enabled in config"
     if stop_ev.is_set():
         return
 
@@ -175,12 +179,10 @@ def imu_render_ui_task(config: BrokerConfig,
         interactor.Start()
     except KeyboardInterrupt as e:
         finish_ev.set()
-        interactor.Stop()
         logging.info('keyboard interrupt')
         return
     finally:
         finish_ev.set()
-        interactor.Stop()
 
     logging.info("imu_render_ui_task finished")
     finish_ev.set()

@@ -28,6 +28,8 @@ def measure(config: BrokerConfig,
         'tcp': mp.Event(),
         'ui': mp.Event()
     }
+    if config.enable_gui and imu_state_queue is None:
+        imu_state_queue = mp.Queue()
 
     tcp_listen_task_process = mp.Process(None,
                                          tcp_listen_task,

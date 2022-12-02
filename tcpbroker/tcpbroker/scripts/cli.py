@@ -4,6 +4,7 @@ import logging
 import multiprocessing as mp
 import os.path
 import os.path as osp
+import signal
 from datetime import datetime
 from typing import Optional
 
@@ -13,17 +14,6 @@ from cvt_measurement import convert_measurement
 from tcpbroker.cmd import control_from_keyboard, portal, easy_setup
 from tcpbroker.config import BrokerConfig
 from tcpbroker.tasks import measure
-
-
-def print_help():
-    print("\
- Usage: \n\
-    > start [measurement_name] - start measurement\n\
-    > easy_setup - begin easy_setup program\n\
-    > control - begin control program\n\
-    > portal  - enter portal mode\n\
-    > quit    - quit program\n")
-
 
 class IMUConsole(cmd.Cmd):
     intro = "Welcome to the Inertial Measurement Unit Data collecting system.   Type help or ? to list commands.\n"
@@ -64,13 +54,45 @@ class IMUConsole(cmd.Cmd):
             pass
 
         signal_stop.set()
-        p.join()
+        p.join(timeout=20)
+        if p.is_alive():
+            os.kill(p.pid, signal.SIGTERM)
 
         # Convert
         try:
             convert_measurement(osp.join(self.option.base_dir, tag))
         except Exception as e:
             self.console.log(e, style="red")
+
+    def do_calibrate(self, arg):
+        """calibrate - calibrate imu"""
+        tag = "_tmp"
+
+        signal_stop = mp.Event()
+        signal_stop.clear()
+        tmp_option = self.option
+        tmp_option.enable_gui = True
+        p = mp.Process(None,
+                       measure,
+                       "measure",
+                       (
+                           tmp_option,
+                           tag,
+                           signal_stop,
+                       ), daemon=False)
+        p.start()
+        try:
+            self.console.input("Press \\[enter] to stop measurement \n")
+        except KeyboardInterrupt:
+            pass
+
+        signal_stop.set()
+        p.join(timeout=20)
+        if p.is_alive():
+            os.kill(p.pid, signal.SIGTERM)
+
+        # Delete tmp file
+        os.removedirs(osp.join(self.option.base_dir, tag))
 
     def do_control(self, arg):
         """control - begin control program"""
@@ -93,23 +115,23 @@ class IMUConsole(cmd.Cmd):
 def main(args):
     if os.path.exists(args.config):
         option = BrokerConfig(args.config)
+
+        logging.basicConfig(level=logging.DEBUG) if option.debug else logging.basicConfig(level=logging.INFO)
+
+        logger = logging.getLogger('tcpbroker')
+        logger.setLevel(logging.DEBUG) if option.debug else logger.setLevel(logging.INFO)
+
+        if args.P:
+            portal(option)
+            exit(0)
+        elif args.easy:
+            easy_setup(option)
+            exit(0)
+        else:
+            IMUConsole(option).cmdloop()
     else:
         logging.error(f"Config file {args.config} not found")
         exit(1)
-
-    logging.basicConfig(level=logging.DEBUG) if option.debug else logging.basicConfig(level=logging.INFO)
-
-    logger = logging.getLogger('tcpbroker')
-    logger.setLevel(logging.DEBUG) if option.debug else logger.setLevel(logging.INFO)
-
-    if args.P:
-        portal(option)
-        exit(0)
-    elif args.easy:
-        easy_setup(option)
-        exit(0)
-    else:
-        IMUConsole(option).cmdloop()
 
 
 if __name__ == '__main__':
@@ -117,6 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('-P', action="store_true", help="portal mode")
     parser.add_argument('--easy', action="store_true", help="start easy setup")
     parser.add_argument('--config', type=str, default='./imu_config.yaml', help="path to config file")
+
     args = parser.parse_args()
 
     main(args)
