@@ -74,7 +74,7 @@ def status():
 @app.get("/v1/imu/connection")
 def imu_connection():
     global IMU_STATES, IMU_ADDRESSES
-    return make_response(status_code=200, imu_ids=list(IMU_STATES.keys()), imu_addresses=IMU_ADDRESSES)
+    return make_response(status_code=200, count=len(IMU_STATES.keys()), imu_ids=list(IMU_STATES.keys()), imu_addresses=IMU_ADDRESSES)
 
 
 @app.post("/v1/imu/control")
@@ -85,13 +85,13 @@ def imu_control(command: str = None):
     else:
         imu_addresses = parse_cidr_addresses(CONFIG.imu_addresses)
         resp = tcp_broadcast_command(imu_addresses, CONFIG.imu_port, command)
-        return make_response(status_code=200, resp=resp)
+        return make_response(status_code=200, count=len(resp), resp=resp)
 
 
 @app.get("/v1/imu/state")
 def imu_state():
     global IMU_STATES
-    return make_response(status_code=200, imu_states=IMU_STATES)
+    return make_response(status_code=200, imu_states=IMU_STATES, count=len(IMU_STATES.keys()))
 
 
 @app.get("/v1/imu/state/{device_id}")

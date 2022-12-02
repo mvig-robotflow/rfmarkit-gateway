@@ -10,7 +10,7 @@ from typing import Optional
 from rich.console import Console
 
 from cvt_measurement import convert_measurement
-from tcpbroker.applications import control_from_keyboard, portal, easy_setup
+from tcpbroker.cmd import control_from_keyboard, portal, easy_setup
 from tcpbroker.config import BrokerConfig
 from tcpbroker.tasks import measure
 

@@ -12,7 +12,7 @@ setup(
     description="IMU message broker",
     packages=[
         "tcpbroker",
-        "tcpbroker.applications",
+        "tcpbroker.cmd",
         "tcpbroker.tasks",
         "tcpbroker.common",
         "tcpbroker.scripts",
