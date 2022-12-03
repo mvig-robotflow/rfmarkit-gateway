@@ -4,16 +4,20 @@ import logging
 import multiprocessing as mp
 import os.path
 import os.path as osp
+import shutil
 import signal
+import threading
+import time
 from datetime import datetime
 from typing import Optional
 
-from rich.console import Console
-
 from cvt_measurement import convert_measurement
+from rich.console import Console
 from tcpbroker.cmd import control_from_keyboard, portal, easy_setup
+from tcpbroker.common import IMUConnection
 from tcpbroker.config import BrokerConfig
 from tcpbroker.tasks import measure
+
 
 class IMUConsole(cmd.Cmd):
     intro = "Welcome to the Inertial Measurement Unit Data collecting system.   Type help or ? to list commands.\n"
@@ -72,6 +76,7 @@ class IMUConsole(cmd.Cmd):
         signal_stop.clear()
         tmp_option = self.option
         tmp_option.enable_gui = True
+        client_info_queue = mp.Queue()
         p = mp.Process(None,
                        measure,
                        "measure",
@@ -79,20 +84,55 @@ class IMUConsole(cmd.Cmd):
                            tmp_option,
                            tag,
                            signal_stop,
+                           client_info_queue
                        ), daemon=False)
         p.start()
+
+        def trigger_imu(q: mp.Queue):
+            while True:
+                if not q.empty():
+                    try:
+                        conn: IMUConnection = q.get(timeout=0.1)
+                        if conn is not None:
+                            retry = 5
+                            while retry > 0:
+                                time.sleep(2)
+                                ret = conn.start()
+                                if ret is not None:
+                                    break
+                                retry -= 1
+
+                                self.console.log(f"failed to trigger IMUConnection(addr={conn.addr}, device_id=None)")
+                        else:
+                            self.console.log("IMUConnection is None, stopping trigger")
+                            break
+                    except Exception:
+                        break
+                else:
+                    time.sleep(0.1)
+
+        trigger = threading.Thread(target=trigger_imu, args=(client_info_queue,))
+        trigger.start()
+
         try:
-            self.console.input("Press \\[enter] to stop measurement \n")
+            self.console.input("Press \\[enter] to stop calibration \n")
         except KeyboardInterrupt:
             pass
 
         signal_stop.set()
-        p.join(timeout=20)
+        client_info_queue.put(None)
+        trigger.join(timeout=5)
+        p.join(timeout=5)
         if p.is_alive():
+            self.console.log("calibration process is still alive, killing it")
             os.kill(p.pid, signal.SIGTERM)
+            if p.is_alive():
+                self.console.log("failed to kill calibration process, please kill it manually")
+        if trigger.is_alive():
+            self.console.log("trigger thread is still alive")
 
         # Delete tmp file
-        os.removedirs(osp.join(self.option.base_dir, tag))
+        shutil.rmtree(osp.join(self.option.base_dir, tag))
 
     def do_control(self, arg):
         """control - begin control program"""
@@ -121,10 +161,10 @@ def main(args):
         logger = logging.getLogger('tcpbroker')
         logger.setLevel(logging.DEBUG) if option.debug else logger.setLevel(logging.INFO)
 
-        if args.P:
+        if hasattr(args, 'P') and args.P:
             portal(option)
             exit(0)
-        elif args.easy:
+        elif hasattr(args, 'easy') and args.easy:
             easy_setup(option)
             exit(0)
         else:

@@ -76,6 +76,22 @@ class IMUConnection:
         else:
             return self.device_id
 
+    def start(self) -> Optional[str]:
+        if self.device_id is None:
+            if self.addr is not None:
+                try:
+                    resp: IMUControlMessage = tcp_send_bytes(self.addr, self.imu_port, "start")
+                    if resp.success:
+                        return resp.msg
+                    else:
+                        return None
+                except Exception as _:
+                    return None
+            else:
+                return None
+        else:
+            return self.device_id
+
 
 class ClientRepo:
     def __init__(self, base_dir, proc_id, imu_state_queue: mp.Queue = None):
