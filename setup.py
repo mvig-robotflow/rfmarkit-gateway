@@ -2,7 +2,7 @@ import os
 
 from setuptools import setup
 
-requires = open("requirements.txt", "r").readlines() if os.path.exists("requirements.txt") else open("./tcpbroker.egg-info/requires.txt", "r").readlines()
+requires = open("requirements.txt", "r").readlines() if os.path.exists("requirements.txt") else open("./markit-tcpbroker.egg-info/requires.txt", "r").readlines()
 
 setup(
     name="markit-tcpbroker",
