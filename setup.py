@@ -2,8 +2,8 @@ import os
 
 from setuptools import setup
 
-requires = open("requirements.txt", "r").readlines() if os.path.exists("requirements.txt") else open("./markit-tcpbroker.egg-info/requires.txt", "r").readlines()
-
+requires = open("requirements.txt", "r").readlines() if os.path.exists("requirements.txt") else open("./markit_tcpbroker.egg-info/requires.txt", "r").readlines()
+print("#-------------------    ", str(os.listdir("./")))
 setup(
     name="markit-tcpbroker",
     version="1.6",
