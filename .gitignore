@@ -4,18 +4,13 @@
 *.whl
 *.egg-info
 *.log
-
-*/imu_data
-tests/data
-ota/*
-
 *.DS_Store
+
 .vscode
 .idea
 
-/cvt_measurement/build/
-/cvt_measurement/cvt_measurement.egg-info/
-/cvt_measurement/dist/
+*/imu_data
+tests/data
 
-/tcpbroker/build/
-/tcpbroker/dist/
+build/
+dist/

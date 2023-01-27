@@ -1,7 +1,0 @@
-{
-  "default_subnet": "10.53.24.0",
-  "n_procs": 4,
-  "imu_data_dir": "./imu_data",
-  "tcp_buff_sz": 1024,
-  "api_port": 18889
-}

@@ -1,0 +1,16 @@
+flask>=2.0.0
+gevent>=21.7.0
+pyyaml
+ipy
+fastapi>=0.87.0
+uvicorn>=0.20.0
+pyreadline>2.0
+open3d>=0.14.1
+scipy>=1.8.0
+tqdm
+vtk
+rich
+streamlit>=1.16.0
+pandas
+numpy
+setuptools
