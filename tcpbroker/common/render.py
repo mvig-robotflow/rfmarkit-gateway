@@ -13,7 +13,8 @@ class IMURender:
     meta_packet_length = struct.calcsize(dgram_meta_t_fmt)
     imu_addr: bytes = b'\xe5'
     addr_length = 1
-    packet_length = addr_length + struct.calcsize(ch_imu_data_t_fmt) + struct.calcsize(dgram_meta_t_fmt)
+    packet_length = addr_length + \
+        struct.calcsize(ch_imu_data_t_fmt) + struct.calcsize(dgram_meta_t_fmt)
 
     buffer: BytesIO = BytesIO()
 
@@ -41,7 +42,8 @@ class IMURender:
     def _parse_packet(self, pkt: bytes) -> Dict[str, Union[float, str, int]]:
         imu_struct = struct.unpack(self.ch_imu_data_t_fmt,
                                    pkt[self.addr_length:self.addr_length + self.imu_packet_length])
-        meta_struct = struct.unpack(self.dgram_meta_t_fmt, pkt[self.addr_length + self.imu_packet_length:])
+        meta_struct = struct.unpack(
+            self.dgram_meta_t_fmt, pkt[self.addr_length + self.imu_packet_length:])
 
         imu_dict: dict = {"accel_x": imu_struct[1], "accel_y": imu_struct[2], "accel_z": imu_struct[3],
                           "gyro_x": imu_struct[4], "gyro_y": imu_struct[5], "gyro_z": imu_struct[6],
@@ -68,7 +70,8 @@ class IMURender:
                     return False, []
             self.buffer.seek(self.buffer.tell() - 1)
 
-            data_valid = sum(self.buffer.read(self.packet_length)) % 0x100 == sum(self.buffer.read(1))
+            data_valid = sum(self.buffer.read(self.packet_length)
+                             ) % 0x100 == sum(self.buffer.read(1))
             if data_valid:
                 self.buffer.seek(self.buffer.tell() - self.packet_length - 1)
                 res = []
@@ -108,6 +111,12 @@ class IMURender:
         # Flush data to disk
         if self.file_handle is not None:
             self.file_handle.write(data)
+
+        return res
+
+    def submit_buffer(self, data: bytes):
+        _, res = self._try_sync(data)
+        return res
 
     def close(self):
         self.file_handle.close()
