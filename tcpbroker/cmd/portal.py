@@ -257,7 +257,7 @@ def portal(cfg: BrokerConfig):
 
     try:
         # app.run(host='0.0.0.0', port=api_port)
-        uvicorn.run(app=app, port=cfg.api_port)
+        uvicorn.run(app=app, port=cfg.api_port, host='0.0.0.0')
     except KeyboardInterrupt:
         LOGGER.info(f"portal() got KeyboardInterrupt")
         return

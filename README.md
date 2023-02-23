@@ -18,5 +18,3 @@ python -m pip install markit-tcpbroker
 ## Documentation
 
 For documentation, please refer to [rfimu-interface/docs](https://github.com/mvig-robotflow/rfimu-interface/docs).
-
-
