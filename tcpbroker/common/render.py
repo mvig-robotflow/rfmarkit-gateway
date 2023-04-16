@@ -4,17 +4,18 @@ import struct
 import time
 from io import BytesIO
 from typing import Dict, List, Tuple, Optional, BinaryIO, Union
+import numpy as np
 
 
 class IMURender:
     ch_imu_data_t_fmt = "I3f3f3f3f4ffI"
     imu_packet_length = struct.calcsize(ch_imu_data_t_fmt)
-    dgram_meta_t_fmt = "=qi12s"
+    dgram_meta_t_fmt = "=qqIi12s"
     meta_packet_length = struct.calcsize(dgram_meta_t_fmt)
     imu_addr: bytes = b'\xe5'
     addr_length = 1
     packet_length = addr_length + \
-        struct.calcsize(ch_imu_data_t_fmt) + struct.calcsize(dgram_meta_t_fmt)
+                    struct.calcsize(ch_imu_data_t_fmt) + struct.calcsize(dgram_meta_t_fmt)
 
     buffer: BytesIO = BytesIO()
 
@@ -39,25 +40,36 @@ class IMURender:
         self.update_interval_s = update_interval_s
         self.last_update_time = time.time()
 
+    @staticmethod
+    def verify_packet(buf, chksum: int) -> bool:
+        arr = np.frombuffer(buf, dtype=np.uint8)
+        arr_chksum = np.bitwise_xor.reduce(arr)
+        return arr_chksum == chksum
+
     def _parse_packet(self, pkt: bytes) -> Dict[str, Union[float, str, int]]:
         imu_struct = struct.unpack(self.ch_imu_data_t_fmt,
                                    pkt[self.addr_length:self.addr_length + self.imu_packet_length])
         meta_struct = struct.unpack(
             self.dgram_meta_t_fmt, pkt[self.addr_length + self.imu_packet_length:])
 
-        imu_dict: dict = {"accel_x": imu_struct[1], "accel_y": imu_struct[2], "accel_z": imu_struct[3],
-                          "gyro_x": imu_struct[4], "gyro_y": imu_struct[5], "gyro_z": imu_struct[6],
-                          "roll": imu_struct[10], "pitch": imu_struct[11], "yaw": imu_struct[12],
-                          "quat_w": imu_struct[13], "quat_x": imu_struct[14], "quat_y": imu_struct[15],
-                          "quat_z": imu_struct[16],
-                          "temp": 0.0,
-                          "mag_x": imu_struct[7], "mag_y": imu_struct[8], "mag_z": imu_struct[9],
-                          "sys_ticks": imu_struct[18]}
+        imu_dict: dict = {
+            "accel_x": imu_struct[1], "accel_y": imu_struct[2], "accel_z": imu_struct[3],
+            "gyro_x": imu_struct[4], "gyro_y": imu_struct[5], "gyro_z": imu_struct[6],
+            "roll": imu_struct[10], "pitch": imu_struct[11], "yaw": imu_struct[12],
+            "quat_w": imu_struct[13], "quat_x": imu_struct[14], "quat_y": imu_struct[15],
+            "quat_z": imu_struct[16],
+            "temp": 0.0,
+            "mag_x": imu_struct[7], "mag_y": imu_struct[8], "mag_z": imu_struct[9],
+            "sys_ticks": imu_struct[18]
+        }
 
-        meta_dict = {'timestamp': meta_struct[0],
-                     'uart_buffer_len': meta_struct[1],
-                     'id': ''.join([chr(meta_struct[2][idx]) for idx in range(len(meta_struct[2]))]),
-                     }
+        meta_dict = {
+            'timestamp': meta_struct[0],
+            'tsf_timestamp': meta_struct[1],
+            'seq': meta_struct[2],
+            'uart_buffer_len': meta_struct[3],
+            'id': ''.join([chr(meta_struct[4][idx]) for idx in range(len(meta_struct[4]))]),
+        }
         return {**imu_dict, **meta_dict}
 
     def _try_sync(self, data: bytes) -> Tuple[bool, List[Dict[str, Union[float, str, int]]]]:
@@ -70,8 +82,10 @@ class IMURender:
                     return False, []
             self.buffer.seek(self.buffer.tell() - 1)
 
-            data_valid = sum(self.buffer.read(self.packet_length)
-                             ) % 0x100 == sum(self.buffer.read(1))
+            _content = self.buffer.read(self.packet_length)
+            _chksum = int(self.buffer.read(1))
+            data_valid = self.verify_packet(_content, _chksum)
+
             if data_valid:
                 self.buffer.seek(self.buffer.tell() - self.packet_length - 1)
                 res = []
