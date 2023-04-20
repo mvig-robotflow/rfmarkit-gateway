@@ -7,8 +7,8 @@ import numpy as np
 import tqdm
 
 from tcpbroker.common import IMUParser
-from .vector import vectorize_to_np
-from .align import align_measurement
+from tcpbroker.functional.vector import vectorize_to_np
+from tcpbroker.functional.align import align_measurement
 
 def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> Dict[str, Dict[str, np.ndarray]]:
     _logger = logging.getLogger('convert_measurement')
@@ -72,5 +72,5 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
 
 
 if __name__ == '__main__':
-    res = convert_measurement(r"C:\Users\liyutong\Desktop\rfimu-interface\imu_data\imu_mem_2022-10-27_193652")
+    res = convert_measurement(r"C:\Users\robotflow\Desktop\rfimu-interface\imu_data\imu_mem_2023-04-18_202012")
     print(res)

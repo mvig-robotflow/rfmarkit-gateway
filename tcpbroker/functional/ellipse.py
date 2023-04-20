@@ -3,33 +3,19 @@ from math import sqrt
 
 import numpy as np
 from scipy.optimize import root
-
+from typing import Tuple, Optional, List
 
 @dataclasses.dataclass()
-class EllipseFitResult:
-    pos: np.ndarray = np.array([np.inf, np.inf, np.inf])
-    length: np.ndarray = np.array([np.inf, np.inf, np.inf])
-    ret: bool = False
+class EllipseFitter:
 
-    @property
-    def score(self) -> float:
-        """Get the score of ellipse fitting
-
-        Returns:
-            float: Score of fitting
-        """
-        if not self.ret:
-            return np.inf
-        else:
-            return np.sum(self.pos ** 2) + np.std(self.length)
-
-    def fit(self, points: np.ndarray):
+    @staticmethod
+    def fit(points: np.ndarray) -> Tuple[bool, Optional[List[float]],  Optional[List[float]], Optional[float]]:
         """Fit an ellipse to points
         Args:
             points (np.ndarray): Points to fit
 
         Returns:
-            EllipseFitResult: Result of fitting
+            EllipseFitter: Result of fitting
 
         """
 
@@ -75,11 +61,11 @@ class EllipseFitResult:
             # Z-axis length
             C = A / sqrt(result[1])
 
-            self.ret = True
-            self.pos = np.array([x0, y0, z0])
-            self.length = np.array([A, B, C])
+            ret = True
+            pos = [x0, y0, z0]
+            length = [A, B, C]
+            score = np.sum(np.array(pos) ** 2) + np.std(length)
+            return ret, pos, length, score
 
         except ValueError as _:
-            self.ret = False
-            self.pos = np.array([np.inf, np.inf, np.inf])
-            self.length = np.array([np.inf, np.inf, np.inf])
+            return False, None, None, None

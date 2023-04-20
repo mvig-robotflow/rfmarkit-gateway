@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 from typing import Dict, List
 
@@ -9,6 +10,8 @@ import quaternionic
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Slerp
 import pickle
+
+from tcpbroker.functional.ellipse import EllipseFitter
 
 
 def quaternionic_slerp(*args):
@@ -56,6 +59,7 @@ def align_measurement(measurement_basedir: str, method: str = 'tsf_timestamp') -
     master_global_timestamp_us = (master_tsf_timestamp_us - master_tsf_timestamp_us[0]) + master_global_to_tsf
 
     interp_res = dict()
+    meta_data = dict()
     for imu_id, imu_data in imu_device_id_mapping.items():
         interp_res[imu_id] = dict()
         for dst_field, src_field in _linear_interp_fields.items():
@@ -98,7 +102,20 @@ def align_measurement(measurement_basedir: str, method: str = 'tsf_timestamp') -
         interp_res[imu_id]['timestamp'] = master_global_timestamp_us
         interp_res[imu_id]['tsf_timestamp'] = master_tsf_timestamp_us
 
+    meta_data['general'] = {
+        '.master_id': master_id
+    }
+    meta_data['timestamp'] = {
+        'master_global_to_tsf': master_global_to_tsf,
+        'std': std,
+        'var': var,
+    }
+    meta_data['ellipse'] = {
+        imu_id: EllipseFitter.fit(imu_data['mag']) for imu_id, imu_data in interp_res.items()
+    }
+
     pickle.dump(interp_res, open(os.path.join(measurement_basedir, f'imu.pkl'), 'wb'))
+    json.dump(meta_data, open(os.path.join(measurement_basedir, f'imu.json'), 'w'), indent=4)
     # np.savez(os.path.join(measurement_basedir, f'imu_all.npz'), **interp_res)
     return interp_res
 
