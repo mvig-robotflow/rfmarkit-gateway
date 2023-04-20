@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from .scripts import cli, configure
+from tcpbroker.scripts import cli, configure
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'configure':

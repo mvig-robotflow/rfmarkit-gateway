@@ -8,13 +8,19 @@ import tqdm
 
 from tcpbroker.common import IMUParser
 from .vector import vectorize_to_np
-
+from .align import align_measurement
 
 def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> Dict[str, Dict[str, np.ndarray]]:
     _logger = logging.getLogger('convert_measurement')
 
     MEASUREMENT_KEYS: List[str] = [
-        'id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'mag_x', 'mag_y', 'mag_z', 'quat_w', 'quat_x', 'quat_y', 'quat_z', 'pitch', 'roll', 'yaw', "uart_buffer_len"
+        'id', 'timestamp',
+        'accel_x', 'accel_y', 'accel_z',
+        'gyro_x', 'gyro_y', 'gyro_z',
+        'mag_x', 'mag_y', 'mag_z',
+        'quat_w', 'quat_x', 'quat_y', 'quat_z',
+        'pitch', 'roll', 'yaw',
+        'uart_buffer_len', 'tsf_timestamp','seq'
     ]
 
     filenames_list: List[str] = glob.glob(os.path.join(measurement_basedir, '*.dat'))
@@ -50,7 +56,7 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
     >>> import numpy as np
     >>> npfile = np.load('./imu_mem_2021-10-21_211859/imu_84f7033b3e78.npz')
     >>> npfile.files
-    ['id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x',  'gyro_y', 'gyro_z', 'pitch', 'roll', 'yaw']
+    ['id', 'timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'mag_x', 'mag_y', 'mag_z', 'quat_w', 'quat_x', 'quat_y', 'quat_z', 'pitch', 'roll', 'yaw', 'uart_buffer_len', 'tsf_timestamp', 'seq']
     >>> npfile['timestamp']
     array([[1.63482358e+15],
           [1.63482358e+15],
@@ -61,7 +67,8 @@ def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> D
           [1.63482235e+15]])
     """
 
-    return all_measurement_np
+    interp_res = align_measurement(measurement_basedir)
+    return interp_res
 
 
 if __name__ == '__main__':

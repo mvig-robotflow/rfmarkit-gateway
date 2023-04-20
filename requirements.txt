@@ -12,5 +12,9 @@ vtk
 rich
 streamlit>=1.16.0
 pandas
-numpy
+numpy<=1.22.0
 setuptools
+py_cli_interaction
+numpy-quaternion
+quaternionic
+quaternionic

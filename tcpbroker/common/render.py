@@ -73,35 +73,37 @@ class IMURender:
         return {**imu_dict, **meta_dict}
 
     def _try_sync(self, data: bytes) -> Tuple[bool, List[Dict[str, Union[float, str, int]]]]:
-        try:
-            self.buffer.write(data)
-            self.buffer.seek(0)
 
-            while (addr := self.buffer.read(1)) != self.imu_addr:
-                if addr == b'':
-                    return False, []
-            self.buffer.seek(self.buffer.tell() - 1)
+        self.buffer.write(data)
+        self.buffer.seek(0)
 
-            _content = self.buffer.read(self.packet_length)
-            _chksum = int(self.buffer.read(1))
-            data_valid = self.verify_packet(_content, _chksum)
-
-            if data_valid:
-                self.buffer.seek(self.buffer.tell() - self.packet_length - 1)
-                res = []
-                while True:
-                    pkt = self.buffer.read(self.packet_length)
-                    checksum = self.buffer.read(1)
-                    if len(pkt) < self.packet_length or checksum == b'':
-                        self.buffer = BytesIO(pkt)
-                        self.buffer.read()  # move pointer to end using read
-                        break
-                    res.append(self._parse_packet(pkt))
-                return True, res
-            else:
+        while (addr := self.buffer.read(1)) != self.imu_addr:
+            if addr == b'':
                 return False, []
-        except ValueError as _:
-            logging.warning("value error encountered in IMURender")
+        self.buffer.seek(self.buffer.tell() - 1)
+
+        _content = self.buffer.read(self.packet_length)
+        _chksum = self.buffer.read(1)
+        if len(_content) < self.packet_length or len(_chksum) < 1:
+            self.buffer.write(_content)
+            self.buffer.write(_chksum)
+            return False, []
+
+        data_valid = self.verify_packet(_content, int(_chksum[0]))
+
+        if data_valid:
+            self.buffer.seek(self.buffer.tell() - self.packet_length - 1)
+            res = []
+            while True:
+                pkt = self.buffer.read(self.packet_length)
+                checksum = self.buffer.read(1)
+                if len(pkt) < self.packet_length or checksum == b'':
+                    self.buffer = BytesIO(pkt)
+                    self.buffer.read()  # move pointer to end using read
+                    break
+                res.append(self._parse_packet(pkt))
+            return True, res
+        else:
             return False, []
 
     def update(self, data: bytes):

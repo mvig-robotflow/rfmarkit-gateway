@@ -6,7 +6,7 @@ requires = open("requirements.txt", "r").readlines() if os.path.exists("requirem
 print("#-------------------    ", str(os.listdir("./")))
 setup(
     name="markit-tcpbroker",
-    version="1.7",
+    version="1.8.0",
     author="davidliyutong",
     author_email="davidliyutong@sjtu.edu.cn",
     description="IMU message broker",
