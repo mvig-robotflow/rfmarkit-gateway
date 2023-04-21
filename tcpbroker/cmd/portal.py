@@ -50,13 +50,12 @@ def measure_and_convert(
         client_info_queue: mp.Queue = None,
         imu_state_queue: mp.Queue = None
 ):
-    global LOGGER
     measure(cfg, tag, signal_stop, client_info_queue, imu_state_queue)
 
     try:
         convert_measurement(osp.join(cfg.base_dir, tag))
     except Exception as e:
-        LOGGER.error(e)
+        logging.error(e)
 
     signal_finish.set()
 
