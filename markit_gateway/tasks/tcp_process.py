@@ -5,8 +5,8 @@ from typing import BinaryIO
 
 import select
 
-from tcpbroker.common import ClientRepo, IMUConnection
-from tcpbroker.config import BrokerConfig
+from markit_gateway.common import ClientRepo, IMUConnection
+from markit_gateway.config import BrokerConfig
 
 logging.basicConfig(level=logging.INFO)
 

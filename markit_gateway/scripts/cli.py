@@ -13,11 +13,11 @@ from typing import Optional
 from rich.console import Console
 
 import cmd
-from tcpbroker.cmd import control_from_keyboard, portal, easy_setup
-from tcpbroker.common import IMUConnection
-from tcpbroker.config import BrokerConfig
-from tcpbroker.functional import convert_measurement
-from tcpbroker.tasks import measure
+from markit_gateway.cmd import control_from_keyboard, portal, easy_setup
+from markit_gateway.common import IMUConnection
+from markit_gateway.config import BrokerConfig
+from markit_gateway.functional import convert_measurement
+from markit_gateway.tasks import measure
 
 
 class IMUConsole(cmd.Cmd):
@@ -159,7 +159,7 @@ def main(args):
 
         logging.basicConfig(level=logging.DEBUG) if option.debug else logging.basicConfig(level=logging.INFO)
 
-        logger = logging.getLogger('tcpbroker')
+        logger = logging.getLogger('markit_gateway')
         logger.setLevel(logging.DEBUG) if option.debug else logger.setLevel(logging.INFO)
 
         if hasattr(args, 'P') and args.P:

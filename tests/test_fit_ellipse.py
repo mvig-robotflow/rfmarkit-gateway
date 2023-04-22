@@ -1,5 +1,5 @@
 import numpy as np
-from tcpbroker.functional import EllipseFitter
+from markit_gateway.functional import EllipseFitter
 
 
 if __name__ == '__main__':

@@ -1,19 +1,19 @@
-# tcpbroker
+# markit-gateway
 
 ## 简介
 
-`tcpbroker` 被设计用于接收多个传感器发送的数据流。其本质是利用python多进程的TCP服务器。该项目是rfimu-interface的一部分
+`markit-gateway` 被设计用于接收多个传感器发送的数据流。其本质是利用python多进程的TCP服务器。
 
 ## 安装
 
 ```shell
-git clone https://github.com/mvig-robotflow/rfimu-interface
-cd rfimu-interface/tcpbroker
+git clone https://github.com/mvig-robotflow/rfmarkit-gateway
+cd rfimu-interface/markit_gateway
 python setup.py develop
 ```
 ## 如何使用
 
-`tcpbroker` 依赖默认为`imu_config.yaml`的配置文件来工作。需要先生成该配置文件，然后再运行`tcpbroker`。`tcpbroker`提供`configure`命令来生成配置文件。
+`markit-gateway` 依赖默认为`imu_config.yaml`的配置文件来工作。需要先生成该配置文件，然后再运行`markit-gateway`。`markit-gateway`提供`configure`命令来生成配置文件。
 
 
 ## 配置
@@ -21,7 +21,7 @@ python setup.py develop
 打开终端，键入
 
 ```shell
-python -m tcpbroker configure
+python -m markit_gateway configure
 ```
 程序将启动交互式界面配置各项参数，默认如下
 
@@ -67,7 +67,7 @@ imu:
 使用
 
 ```shell
-python -m tcpbroker [-h] [-P] [--easy] [--config CONFIG]
+python -m markit_gateway [-h] [-P] [--easy] [--config CONFIG]
 ```
 
 启动，或者用`--port`选项指定端口。
@@ -121,7 +121,7 @@ OK
 新建一个新的终端窗口，再次运行
 
 ```bash
-python -m tcpbroker
+python -m markit_gateway
 ```
 
 输入`control/c`然后回车即可开始控制。

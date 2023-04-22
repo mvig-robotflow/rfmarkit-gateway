@@ -6,9 +6,9 @@ from typing import Dict, List
 import numpy as np
 import tqdm
 
-from tcpbroker.common import IMUParser
-from tcpbroker.functional.vector import vectorize_to_np
-from tcpbroker.functional.align import align_measurement
+from markit_gateway.common import IMUParser
+from markit_gateway.functional.vector import vectorize_to_np
+from markit_gateway.functional.align import align_measurement
 
 def convert_measurement(measurement_basedir: str, delete_dat: bool = False) -> Dict[str, Dict[str, np.ndarray]]:
     _logger = logging.getLogger('convert_measurement')

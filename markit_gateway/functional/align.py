@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Slerp
 import pickle
 
-from tcpbroker.functional.ellipse import EllipseFitter
+from markit_gateway.functional.ellipse import EllipseFitter
 
 
 def quaternionic_slerp(*args):

@@ -5,7 +5,7 @@ import signal
 import time
 from typing import Optional
 
-from tcpbroker.config import BrokerConfig
+from markit_gateway.config import BrokerConfig
 from .imu_render_ui import imu_render_ui_task
 from .tcp_listen import tcp_listen_task
 

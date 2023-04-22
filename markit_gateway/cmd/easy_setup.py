@@ -3,9 +3,9 @@ import logging
 from py_cli_interaction import must_parse_cli_sel
 from rich.console import Console
 
-from tcpbroker.common import tcp_broadcast_command
-from tcpbroker.config import BrokerConfig
-from tcpbroker.utils import parse_cidr_addresses
+from markit_gateway.common import tcp_broadcast_command
+from markit_gateway.config import BrokerConfig
+from markit_gateway.utils import parse_cidr_addresses
 
 
 def easy_setup(config: BrokerConfig):

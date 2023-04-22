@@ -4,9 +4,9 @@ from datetime import datetime
 
 from rich.console import Console
 
-from tcpbroker.functional import convert_measurement
-from tcpbroker.config import BrokerConfig
-from tcpbroker.tasks import measure
+from markit_gateway.functional import convert_measurement
+from markit_gateway.config import BrokerConfig
+from markit_gateway.tasks import measure
 
 
 def main(option: BrokerConfig, tag: str):

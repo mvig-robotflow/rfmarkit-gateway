@@ -7,8 +7,8 @@ from typing import List
 
 import select
 
-from tcpbroker.common import IMUConnection
-from tcpbroker.config import BrokerConfig
+from markit_gateway.common import IMUConnection
+from markit_gateway.config import BrokerConfig
 from .tcp_process import tcp_process_task
 
 

@@ -2,7 +2,7 @@ import argparse
 
 import yaml
 
-from tcpbroker.config import BrokerConfig
+from markit_gateway.config import BrokerConfig
 
 
 def main(args: argparse.Namespace):

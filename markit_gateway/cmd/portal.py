@@ -12,11 +12,11 @@ from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from tcpbroker.common import IMUConnection, tcp_broadcast_command
-from tcpbroker.config import BrokerConfig
-from tcpbroker.functional import convert_measurement
-from tcpbroker.tasks import measure
-from tcpbroker.utils import get_datetime_tag, parse_cidr_addresses
+from markit_gateway.common import IMUConnection, tcp_broadcast_command
+from markit_gateway.config import BrokerConfig
+from markit_gateway.functional import convert_measurement
+from markit_gateway.tasks import measure
+from markit_gateway.utils import get_datetime_tag, parse_cidr_addresses
 
 app = FastAPI()
 LOGGER: Optional[logging.Logger] = None
@@ -246,9 +246,9 @@ def portal(cfg: BrokerConfig):
 
     # setting global parameters
     logging.basicConfig(level=logging.INFO)
-    LOGGER = logging.getLogger("tcpbroker.portal")
+    LOGGER = logging.getLogger("markit_gateway.portal")
     # Prepare system
-    LOGGER.info(f"prepare tcpbroker:{cfg.imu_port} at {cfg.api_port}")
+    LOGGER.info(f"prepare markit_gateway:{cfg.imu_port} at {cfg.api_port}")
 
     # Start threads
     threading.Thread(target=update_imu_state_thread, daemon=True).start()
