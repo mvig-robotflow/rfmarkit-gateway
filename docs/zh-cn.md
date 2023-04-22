@@ -70,6 +70,12 @@ imu:
 python -m markit_gateway [-h] [-P] [--easy] [--config CONFIG]
 ```
 
+或者
+
+```shell
+python -m markit_gateway serve [--config CONFIG]
+```
+
 启动，或者用`--port`选项指定端口。
 > (将来也许会改变) 传感器默认会与服务器的`18888`端口通信。
 
